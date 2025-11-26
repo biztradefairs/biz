@@ -470,7 +470,8 @@ export default function AdminDashboard({ userRole, userPermissions }: AdminDashb
         case "venues-bookings":
           return <VenueBookingsPage />
 
-       
+        // case "visitors-events":
+          // return <VisitorEventsPage />
 
         default:
           console.log("Unknown sub-section:", subSection)

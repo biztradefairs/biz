@@ -26,7 +26,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",
-    "@prisma/client": "^6.16.1",
+    "@prisma/client": "^7.0.1",
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-avatar": "^1.1.10",
     "@radix-ui/react-checkbox": "^1.3.2",
@@ -93,7 +93,7 @@
     "@types/qrcode": "^1.5.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "prisma": "^6.16.2",
+    "prisma": "^7.0.1",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.4",
     "typescript": "^5"

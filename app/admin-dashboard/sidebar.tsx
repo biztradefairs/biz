@@ -461,37 +461,7 @@ export default function AdminDashboard({ userRole, userPermissions }: AdminDashb
         case "speakers-feedback":
           return <SpeakerFeedbackPage />
 
-        // case "venues-add":
-        //   return <AddVenueComponent />
-
-        // case "venues-events":
-        //   return <VenuesEventsPage />
-
-        // case "venues-bookings":
-        //   return <VenueBookingsPage />
-
-        // case "visitors-events":
-        //   return <VisitorEventsPage />
-
-        // case "visitors-connections":
-        //   return <VisitorConnectionsPage />
-
-        // case "visitors-appointments":
-        //   return <VisitorAppointmentsPage />
-
-        // case "financial-payments":
-        //   return <FinancialPaymentsPage />
-
-        // case "financial-subscriptions":
-        //   return <FinancialSubscriptionsPage />
-
-        // case "financial-invoices":
-        //   return <FinancialInvoicesPage />
-
-        // case "financial-transactions":
-        //   return <FinancialTransactionsPage />
-
-
+        
 
         default:
           console.log("Unknown sub-section:", subSection)

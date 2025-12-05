@@ -122,7 +122,7 @@ const formattedExhibitors = exhibitors.map(exhibitor => ({
     console.error("Error fetching exhibitors:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
-}
+} 
 
 export async function POST(request: NextRequest) {
   try {

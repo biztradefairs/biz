@@ -15,11 +15,40 @@ const nextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'images.unsplash.com',
         hostname: 'lh3.googleusercontent.com',
         pathname: '/**',
       },
       {
         protocol: 'https',
+        hostname: 'sfcc.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.sfcc.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'techexpo2025.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'bfs2025.com', // Add this domain
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'youtube.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'i.ytimg.com',
+        pathname: '/**',
+      },
         hostname: '*.googleusercontent.com',
         pathname: '/**',
       },

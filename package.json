@@ -52,6 +52,7 @@
     "@types/ws": "^8.18.1",
     "@types/xlsx": "^0.0.35",
     "bcryptjs": "^3.0.2",
+    "bson": "^7.0.0",
     "class-variance-authority": "^0.7.1",
     "cloudinary": "^2.7.0",
     "clsx": "^2.1.1",

@@ -16,7 +16,7 @@ export default async function HeroSlideshow() {
       venue: {
         select: {
           venueName: true,
-          venueAddress: true,
+          // venueAddress: true,
           venueCity: true,
           venueCountry: true,
         },

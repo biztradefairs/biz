@@ -10,6 +10,7 @@ async function getFeaturedEvents() {
     select: {
       id: true,
       title: true,
+      slug: true, // ADD THIS LINE
       startDate: true,
       tags: true,
       edition: true,
@@ -36,6 +37,7 @@ async function getFeaturedEvents() {
 interface Event {
   id: string;
   title: string;
+  slug: string | null; // ADD THIS
   startDate: Date;
   endDate: Date;
   bannerImage: string | null;
@@ -52,7 +54,7 @@ interface Event {
   } | null;
 }
 
-// Event Card Component
+// Event Card Component - UPDATED LINK
 function EventCard({ event }: { event: Event }) {
   const start = new Date(event.startDate);
   const end = new Date(event.endDate);
@@ -77,8 +79,11 @@ function EventCard({ event }: { event: Event }) {
 
   const eventType = event.eventType?.[0] || "Event";
 
+  // Generate slug from title if not available in database
+  const eventSlug = event.slug || generateSlug(event.title);
+
   return (
-    <Link href={`/event/${event.id}`} className="group block">
+    <Link href={`/event/${eventSlug}`} className="group block">
       <div
         className="flex bg-white border border-gray-200 
                    shadow-sm hover:shadow-md hover:-translate-y-1 
@@ -129,6 +134,18 @@ function EventCard({ event }: { event: Event }) {
       </div>
     </Link>
   );
+}
+
+// Helper function to generate slug from title
+function generateSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w\-]+/g, '')
+    .replace(/\-\-+/g, '-')
+    .replace(/^-+/, '')
+    .replace(/-+$/, '');
 }
 
 export default async function FeaturedEvents() {

@@ -12,6 +12,7 @@ interface Venue {
 interface Event {
   id: string
   title: string
+  slug?: string | null // ADD THIS
   startDate: string
   endDate?: string | null
   bannerImage?: string | null
@@ -32,8 +33,11 @@ const EventCard = ({ event }: { event: Event }) => {
     ? [event.venue.venueCity, event.venue.venueCountry].filter(Boolean).join(", ")
     : "Venue coming soon"
 
+  // Generate slug from title if not available
+  const eventSlug = event.slug || generateSlug(event.title)
+
   return (
-    <Link href={`/event/${event.id}`}>
+    <Link href={`/event/${eventSlug}`}>
       <div className="flex-shrink-0 w-80 h-[480px] bg-[#F2F2F2] relative overflow-hidden hover:shadow-xl transition snap-start">
         <img
           src={event.bannerImage || event.images?.[0] || "/herosection-images/food.jpg"}
@@ -60,6 +64,18 @@ const EventCard = ({ event }: { event: Event }) => {
       </div>
     </Link>
   )
+}
+
+// Helper function to generate slug from title
+function generateSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w\-]+/g, '')
+    .replace(/\-\-+/g, '-')
+    .replace(/^-+/, '')
+    .replace(/-+$/, '');
 }
 
 export default function HeroSlideshowClient({

@@ -187,27 +187,37 @@ export default function Navbar() {
     setSearchQuery("")
   }
 
-  const handleAddevent = async () => {
-    if (!session) {
-      alert("You are not logged in. Please login as an organizer.")
-      router.push("/organizer-signup")
-      return
-    }
-
-    const role = session.user?.role
-
-    if (role == "ORGANIZER") {
-      router.push(`/organizer-dashboard/${session.user?.id}`)
-    } else {
-      const confirmed = window.confirm(
-        `You are logged in as '${role}'.\n\nPlease login as an organizer to access this page.\n\nClick OK to logout and login as an organizer, or Cancel to stay logged in.`,
-      )
-      if (confirmed) {
-        await signOut({ redirect: false })
-        router.push("/login")
-      }
-    }
+const handleAddevent = async () => {
+  // If not logged in, go to organizer signup directly
+  if (!session) {
+    router.push("/organizer-signup")
+    return
   }
+
+  const role = session.user?.role
+
+  // Organizers go to their dashboard
+  if (role === "ORGANIZER") {
+    router.push(`/organizer-dashboard/${session.user?.id}`)
+    return
+  }
+
+  // Superadmins go to admin dashboard
+  if (role === "superadmin") {
+    router.push("/admin-dashboard")
+    return
+  }
+
+  // For all other roles (ATTENDEE, etc.), show logout prompt
+  const confirmed = window.confirm(
+    `You are logged in as '${role}'.\n\nPlease login as an organizer to access this page.\n\nClick OK to logout and login as an organizer, or Cancel to stay logged in.`,
+  )
+  
+  if (confirmed) {
+    await signOut({ redirect: false })
+    router.push("/organizer-signup")
+  }
+}
 
   const handleDashboard = () => {
     const role = session?.user?.role

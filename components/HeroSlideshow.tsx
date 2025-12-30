@@ -21,7 +21,9 @@ export default async function HeroSlideshow() {
       events = data.events.map((event: any) => ({
         ...event,
         startDate: new Date(event.startDate).toISOString(),
-        endDate: event.endDate ? new Date(event.endDate).toISOString() : null
+        endDate: event.endDate ? new Date(event.endDate).toISOString() : null,
+        // Ensure slug exists
+        slug: event.slug || generateSlug(event.title)
       }))
     }
   } catch (error) {
@@ -29,4 +31,16 @@ export default async function HeroSlideshow() {
   }
 
   return <HeroSlideshowClient initialEvents={events} />
+}
+
+// Helper function to generate slug from title
+function generateSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w\-]+/g, '')
+    .replace(/\-\-+/g, '-')
+    .replace(/^-+/, '')
+    .replace(/-+$/, '')
 }

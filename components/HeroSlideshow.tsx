@@ -1,36 +1,32 @@
-import { prisma } from "@/lib/prisma";
-import HeroSlideshowClient from "./HeroSlideshowClient";
+import { headers } from 'next/headers'
+import HeroSlideshowClient from "./HeroSlideshowClient"
 
-export const dynamic = "force-dynamic"; // Always fresh SSR
+export const revalidate = 60
 
 export default async function HeroSlideshow() {
-  const events = await prisma.event.findMany({
-    where: { isVIP: true },
-    select: {
-      id: true,
-      title: true,
-      startDate: true,
-      endDate: true,
-      bannerImage: true,
-      images: true,
-      venue: {
-        select: {
-          venueName: true,
-          // venueAddress: true,
-          venueCity: true,
-          venueCountry: true,
-        },
-      },
-    },
-    orderBy: { startDate: "asc" },
-  });
+  let events = []
+  
+  try {
+    // Get the host from headers to construct the URL
+    const headersList = await headers()
+    const host = headersList.get('host')
+    const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http'
+    
+    const res = await fetch(`${protocol}://${host}/api/events/vip`, {
+      next: { revalidate: 60 }
+    })
 
-  // ✅ Convert Date → string for client safety
-  const serializedEvents = events.map((event) => ({
-    ...event,
-    startDate: event.startDate.toISOString(),
-    endDate: event.endDate ? event.endDate.toISOString() : null,
-  }));
+    if (res.ok) {
+      const data = await res.json()
+      events = data.events.map((event: any) => ({
+        ...event,
+        startDate: new Date(event.startDate).toISOString(),
+        endDate: event.endDate ? new Date(event.endDate).toISOString() : null
+      }))
+    }
+  } catch (error) {
+    console.error("Error fetching VIP events:", error)
+  }
 
-  return <HeroSlideshowClient initialEvents={serializedEvents} />;
+  return <HeroSlideshowClient initialEvents={events} />
 }

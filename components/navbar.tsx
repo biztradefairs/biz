@@ -74,6 +74,8 @@ export default function Navbar() {
 
   const router = useRouter()
   const searchRef = useRef<HTMLDivElement>(null)
+  const abortRef = useRef<AbortController | null>(null)
+  const debounceRef = useRef<NodeJS.Timeout | null>(null)
 
   const toggleExplore = () => setExploreOpen((prev) => !prev)
 
@@ -93,9 +95,21 @@ export default function Navbar() {
   }, [])
 
   // Search function
-  const handleSearch = async (query: string) => {
-    setSearchQuery(query)
-    
+  const handleSearchInput = (value: string) => {
+    setSearchQuery(value)
+
+    const query = value.trim()
+
+    // Clear previous debounce
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+    }
+
+    // Cancel previous request
+    if (abortRef.current) {
+      abortRef.current.abort()
+    }
+
     if (query.length < 2) {
       setSearchResults({
         events: [],
@@ -107,21 +121,31 @@ export default function Navbar() {
       return
     }
 
-    setIsSearching(true)
-    try {
-      const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&limit=5`)
-      const data = await response.json()
-      
-      if (response.ok) {
+    debounceRef.current = setTimeout(async () => {
+      abortRef.current = new AbortController()
+      setIsSearching(true)
+
+      try {
+        const res = await fetch(
+          `/api/search?q=${encodeURIComponent(query)}&limit=5`,
+          { signal: abortRef.current.signal }
+        )
+
+        if (!res.ok) return
+
+        const data = await res.json()
         setSearchResults(data)
         setShowSearchResults(true)
+      } catch (err: any) {
+        if (err.name !== "AbortError") {
+          console.error("Search error:", err)
+        }
+      } finally {
+        setIsSearching(false)
       }
-    } catch (error) {
-      console.error("Search error:", error)
-    } finally {
-      setIsSearching(false)
-    }
+    }, 500) // 🔥 debounce delay
   }
+
 
   // Navigation handlers
   const handleEventClick = (eventId: string) => {
@@ -213,12 +237,12 @@ export default function Navbar() {
 
   // Helper function to render search results
   const renderSearchResults = () => {
-    const resultsToShow = activeTab === 'all' 
-      ? searchResults.allResults 
-      : activeTab === 'events' 
-        ? searchResults.events 
-        : activeTab === 'venues' 
-          ? searchResults.venues 
+    const resultsToShow = activeTab === 'all'
+      ? searchResults.allResults
+      : activeTab === 'events'
+        ? searchResults.events
+        : activeTab === 'venues'
+          ? searchResults.venues
           : searchResults.speakers
 
     if (isSearching) {
@@ -265,12 +289,12 @@ export default function Navbar() {
                 <h4 className="font-medium text-gray-900 truncate">
                   {result.title || result.displayName || result.venueName || `${result.firstName} ${result.lastName}`}
                 </h4>
-                
+
                 {/* Event specific info */}
                 {(result.type === 'event' || result.resultType === 'event') && (
                   <>
                     <p className="text-sm text-gray-600 mt-1">
-                      {result.venue?.venueCity && result.venue?.venueCountry 
+                      {result.venue?.venueCity && result.venue?.venueCountry
                         ? `${result.venue.venueCity}, ${result.venue.venueCountry}`
                         : 'Online Event'
                       }
@@ -314,35 +338,21 @@ export default function Navbar() {
 
                 {/* Speaker specific info */}
                 {(result.type === 'speaker' || result.resultType === 'speaker') && (
-                  <>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {result.jobTitle}{result.company ? ` at ${result.company}` : ''}
-                    </p>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {result.expertise?.slice(0, 2).map((exp: string, idx: number) => (
-                        <span key={idx} className="inline-block px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded">
-                          {exp}
-                        </span>
-                      ))}
-                      {result.expertise && result.expertise.length > 2 && (
-                        <span className="text-xs text-gray-500">
-                          +{result.expertise.length - 2} more
-                        </span>
-                      )}
-                    </div>
-                  </>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Speaker
+                  </p>
                 )}
+
               </div>
 
               {/* Type badge */}
               <div className="flex-shrink-0">
-                <span className={`inline-block px-2 py-1 text-xs rounded capitalize ${
-                  result.type === 'event' || result.resultType === 'event' 
-                    ? 'bg-blue-100 text-blue-800' 
+                <span className={`inline-block px-2 py-1 text-xs rounded capitalize ${result.type === 'event' || result.resultType === 'event'
+                    ? 'bg-blue-100 text-blue-800'
                     : result.type === 'venue' || result.resultType === 'venue'
                       ? 'bg-green-100 text-green-800'
                       : 'bg-purple-100 text-purple-800'
-                }`}>
+                  }`}>
                   {result.type || result.resultType}
                 </span>
               </div>
@@ -414,11 +424,12 @@ export default function Navbar() {
                 placeholder="Search events, venues, speakers..."
                 className="w-full text-black py-2 pl-10 pr-12"
                 value={searchQuery}
-                onChange={(e) => handleSearch(e.target.value)}
+                onChange={(e) => handleSearchInput(e.target.value)}
+
                 onFocus={() => searchQuery.length >= 2 && setShowSearchResults(true)}
               />
               <Search className="w-5 h-5 absolute right-5 top-1/2 transform -translate-y-1/2" />
-              
+
               {/* Enhanced Search Results Dropdown */}
               {showSearchResults && (
                 <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg z-50 mt-1">
@@ -428,11 +439,10 @@ export default function Navbar() {
                       <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        className={`flex-1 px-4 py-2 text-sm font-medium capitalize ${
-                          activeTab === tab
+                        className={`flex-1 px-4 py-2 text-sm font-medium capitalize ${activeTab === tab
                             ? 'text-blue-600 border-b-2 border-blue-600'
                             : 'text-gray-500 hover:text-gray-700'
-                        }`}
+                          }`}
                       >
                         {tab} {tab !== 'all' && `(${searchResults[tab as keyof SearchResults]?.length || 0})`}
                       </button>

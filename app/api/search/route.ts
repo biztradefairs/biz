@@ -1,284 +1,135 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
-// --- Define types for clarity ---
-interface EventResult {
-  id: string
-  title: string
-  slug: string
-  category: string | null
-  startDate: Date
-  endDate: Date
-  isFeatured: boolean | null
-  isVIP: boolean | null
-  venue: {
-    id: string
-    venueName: string | null
-    venueCity: string | null
-    venueCountry: string | null
-  } | null
-  type: "event"
-  spotsRemaining: number | null
-  isRegistrationOpen: boolean
-  [key: string]: any
-}
-
-interface VenueResult {
-  id: string
-  venueName: string | null
-  venueCity: string | null
-  venueState: string | null
-  venueCountry: string | null
-  location: string
-  displayName: string | null
-  type: "venue"
-  [key: string]: any
-}
-
-interface SpeakerResult {
-  id: string
-  firstName: string
-  lastName: string
-  displayName: string
-  expertise: string[]
-  type: "speaker"
-  [key: string]: any
-}
-
-interface SearchResults {
-  events: EventResult[]
-  venues: VenueResult[]
-  speakers: SpeakerResult[]
-  allResults: (EventResult | VenueResult | SpeakerResult)[]
-}
+/**
+ * Optimized Navbar Search API
+ * Target response time: 150–300ms
+ */
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const query = searchParams.get("q") || ""
-    const limit = parseInt(searchParams.get("limit") || "5")
-    const type = searchParams.get("type") || "all"
+    const rawQuery = searchParams.get("q") || ""
+    const query = rawQuery.trim()
+    const limit = Number(searchParams.get("limit") || 5)
 
-    if (!query.trim()) {
-      const empty: SearchResults = { events: [], venues: [], speakers: [], allResults: [] }
-      return NextResponse.json(empty, { status: 200 })
+    // ❌ Do not hit DB for empty or short queries
+    if (!query || query.length < 2) {
+      return NextResponse.json({
+        events: [],
+        venues: [],
+        speakers: [],
+        allResults: []
+      })
     }
 
-    const searchResults: SearchResults = {
-      events: [],
-      venues: [],
-      speakers: [],
-      allResults: [],
-    }
-
-    // Search Events
-    if (type === "all" || type === "events") {
-      const events = await prisma.event.findMany({
+    /**
+     * Run all queries in parallel
+     * Keep queries SIMPLE & INDEX-FRIENDLY
+     */
+    const [events, venues, speakers] = await Promise.all([
+      // 🔹 EVENTS (title only – fast)
+      prisma.event.findMany({
         where: {
           isPublic: true,
-          OR: [
-            { title: { contains: query, mode: "insensitive" } },
-            { description: { contains: query, mode: "insensitive" } },
-            { shortDescription: { contains: query, mode: "insensitive" } },
-            // For array fields like category and tags, we need to check if array contains the value
-            { tags: { has: query } },
-            { 
-              venue: { 
-                venueName: { contains: query, mode: "insensitive" }
-              }
-            },
-            {
-              venue: {
-                venueCity: { contains: query, mode: "insensitive" }
-              }
-            },
-            {
-              venue: {
-                venueCountry: { contains: query, mode: "insensitive" }
-              }
-            }
-          ]
+          title: { contains: query, mode: "insensitive" }
         },
         select: {
           id: true,
           title: true,
-          description: true,
-          shortDescription: true,
-          slug: true,
-          category: true,
-          tags: true,
-          eventType: true,
-          isFeatured: true,
-          isVIP: true,
           startDate: true,
-          endDate: true,
-          timezone: true,
-          isVirtual: true,
-          virtualLink: true,
-          maxAttendees: true,
-          currentAttendees: true,
-          ticketTypes: true,
-          currency: true,
-          images: true,
-          bannerImage: true,
-          thumbnailImage: true,
-          organizer: {
-            select: {
-              id: true,
-              firstName: true,
-              avatar: true,
-            },
-          },
+          isVIP: true,
+          isFeatured: true,
           venue: {
             select: {
-              id: true,
-              venueName: true,
-              venueAddress: true,
               venueCity: true,
-              venueState: true,
-              venueCountry: true,
-            },
-          },
-          _count: {
-            select: {
-              registrations: true,
-            },
-          },
+              venueCountry: true
+            }
+          }
         },
-        take: limit,
-        orderBy: {
-          startDate: "asc",
-        },
-      })
+        orderBy: { startDate: "asc" },
+        take: limit
+      }),
 
-      searchResults.events = events.map((event) => ({
-        ...event,
-        category: event.category.length > 0 ? event.category.join(", ") : "Uncategorized",
-        type: "event",
-        spotsRemaining: event.maxAttendees
-          ? event.maxAttendees - event._count.registrations
-          : null,
-        isRegistrationOpen: true,
-      })) as EventResult[]
-    }
-
-    // Search Venues
-    if (type === "all" || type === "venues") {
-      const venues = await prisma.user.findMany({
+      // 🔹 VENUES (name only – fast)
+      prisma.user.findMany({
         where: {
           role: "VENUE_MANAGER",
           isActive: true,
-          OR: [
-            { venueName: { contains: query, mode: "insensitive" } },
-            { venueDescription: { contains: query, mode: "insensitive" } },
-            { venueAddress: { contains: query, mode: "insensitive" } },
-            { venueCity: { contains: query, mode: "insensitive" } },
-            { venueState: { contains: query, mode: "insensitive" } },
-            { venueCountry: { contains: query, mode: "insensitive" } },
-            { firstName: { contains: query, mode: "insensitive" } },
-            { lastName: { contains: query, mode: "insensitive" } },
-          ]
+          venueName: { contains: query, mode: "insensitive" }
         },
         select: {
           id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-          phone: true,
-          avatar: true,
           venueName: true,
-          venueDescription: true,
-          venueAddress: true,
           venueCity: true,
-          venueState: true,
-          venueCountry: true,
-          venueZipCode: true,
-          maxCapacity: true,
-          totalHalls: true,
-          amenities: true,
-          averageRating: true,
-          totalReviews: true,
-          createdAt: true,
+          venueCountry: true
         },
-        take: limit,
-        orderBy: {
-          averageRating: "desc",
-        },
-      })
+        take: limit
+      }),
 
-      searchResults.venues = venues.map((venue) => ({
-        ...venue,
-        type: 'venue',
-        displayName: venue.venueName || `${venue.firstName} ${venue.lastName}`,
-        location: [venue.venueCity, venue.venueState, venue.venueCountry].filter(Boolean).join(', '),
-      })) as VenueResult[]
-    }
-
-    // Search Speakers
-    if (type === "all" || type === "speakers") {
-      const speakers = await prisma.user.findMany({
+      // 🔹 SPEAKERS (first + last name only)
+      prisma.user.findMany({
         where: {
           role: "SPEAKER",
           isActive: true,
           OR: [
             { firstName: { contains: query, mode: "insensitive" } },
-            { lastName: { contains: query, mode: "insensitive" } },
-            { email: { contains: query, mode: "insensitive" } },
-            { company: { contains: query, mode: "insensitive" } },
-            { jobTitle: { contains: query, mode: "insensitive" } },
-            { bio: { contains: query, mode: "insensitive" } },
-            { specialties: { hasSome: [query] } },
-            { location: { contains: query, mode: "insensitive" } },
+            { lastName: { contains: query, mode: "insensitive" } }
           ]
         },
         select: {
           id: true,
           firstName: true,
-          lastName: true,
-          email: true,
-          phone: true,
-          avatar: true,
-          bio: true,
-          company: true,
-          jobTitle: true,
-          location: true,
-          website: true,
-          linkedin: true,
-          twitter: true,
-          specialties: true,
-          achievements: true,
-          certifications: true,
-          speakingExperience: true,
-          isVerified: true,
-          totalEvents: true,
-          averageRating: true,
-          totalReviews: true,
-          createdAt: true,
+          lastName: true
         },
-        take: limit,
-        orderBy: {
-          totalEvents: "desc",
-        },
+        take: limit
       })
+    ])
 
-      searchResults.speakers = speakers.map((speaker) => ({
-        ...speaker,
-        type: 'speaker',
-        displayName: `${speaker.firstName} ${speaker.lastName}`,
-        expertise: speaker.specialties?.slice(0, 3) || [],
-      })) as SpeakerResult[]
-    }
+    /**
+     * Normalize response
+     */
+    const eventResults = events.map(event => ({
+      id: event.id,
+      title: event.title,
+      startDate: event.startDate,
+      isVIP: event.isVIP,
+      isFeatured: event.isFeatured,
+      venue: event.venue,
+      type: "event"
+    }))
 
-    // Combine all results for unified search
-    searchResults.allResults = [
-      ...searchResults.events.map(event => ({ ...event, resultType: 'event' })),
-      ...searchResults.venues.map(venue => ({ ...venue, resultType: 'venue' })),
-      ...searchResults.speakers.map(speaker => ({ ...speaker, resultType: 'speaker' }))
-    ].slice(0, limit * 3)
+    const venueResults = venues.map(venue => ({
+      id: venue.id,
+      venueName: venue.venueName,
+      location: [venue.venueCity, venue.venueCountry].filter(Boolean).join(", "),
+      type: "venue"
+    }))
 
-    return NextResponse.json(searchResults, { status: 200 })
+    const speakerResults = speakers.map(speaker => ({
+      id: speaker.id,
+      displayName: `${speaker.firstName} ${speaker.lastName}`,
+      type: "speaker"
+    }))
+
+    return NextResponse.json(
+      {
+        events: eventResults,
+        venues: venueResults,
+        speakers: speakerResults,
+        allResults: [
+          ...eventResults.map(e => ({ ...e, resultType: "event" })),
+          ...venueResults.map(v => ({ ...v, resultType: "venue" })),
+          ...speakerResults.map(s => ({ ...s, resultType: "speaker" }))
+        ]
+      },
+      { status: 200 }
+    )
   } catch (error) {
-    console.error("Error searching:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error("Search API error:", error)
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    )
   }
 }

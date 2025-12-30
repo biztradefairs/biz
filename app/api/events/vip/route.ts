@@ -1,51 +1,39 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
+// Cache this route for 60 seconds
+export const revalidate = 60
+
 export async function GET() {
   try {
-    // Only VIP + Public events (no authentication required)
-    const vipEvents = await prisma.event.findMany({
+    const events = await prisma.event.findMany({
       where: {
-        // isPublic: true,
-        isVIP: true,
+        isPublic: true,
+        isVIP: true
       },
       select: {
         id: true,
         title: true,
-        description: true,
-        shortDescription: true,
         slug: true,
         startDate: true,
-        endDate: true,
         bannerImage: true,
-        // city: true,
-        // country: true,
-        maxAttendees: true,
-        _count: {
+        thumbnailImage: true,
+        venue: {
           select: {
-            registrations: true,
-          },
-        },
+            venueCity: true,
+            venueCountry: true
+          }
+        }
       },
       orderBy: {
-        startDate: "asc",
+        startDate: "asc"
       },
+      take: 10 // 🔥 LIMIT IS VERY IMPORTANT
     })
 
-    // Add computed fields
-    const eventsWithComputedFields = vipEvents.map((event) => ({
-      ...event,
-      spotsRemaining: event.maxAttendees
-        ? event.maxAttendees - event._count.registrations
-        : null,
-      isRegistrationOpen:
-        new Date() >= new Date(event.startDate) &&
-        new Date() <= new Date(event.endDate),
-    }))
-
-    return NextResponse.json({ events: eventsWithComputedFields }, { status: 200 })
-  } catch (error) {
-    console.error("Error fetching VIP events:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json({ events })
+  } catch (e) {
+    console.error("VIP events error", e)
+    return NextResponse.json({ events: [] })
   }
 }

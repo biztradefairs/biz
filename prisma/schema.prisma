@@ -152,6 +152,14 @@ model User {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
+  // 🔥 PASSWORD RESET FIELDS - ADD THESE
+  resetToken           String?
+  resetTokenExpiry     DateTime?
+  otp                  String?
+  otpExpiry            DateTime?
+  lastPasswordChange   DateTime?
+  passwordResetAttempts Int     @default(0)
+
   // Profile Information
   bio             String?
   website         String?
@@ -288,7 +296,6 @@ model User {
 
   @@map("users")
 }
-
 enum UserRole {
   ADMIN
   ORGANIZER

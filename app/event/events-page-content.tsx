@@ -318,7 +318,34 @@ export default function EventsPageContent() {
 
   const itemsPerPage = 6
 
+  // Fixed categories with accurate counts
   const categories = useMemo(() => {
+    if (!events || events.length === 0) return []
+
+    const categoryMap = new Map<string, number>()
+    
+    // Count actual categories from events
+    events.forEach((event) => {
+      if (event.categories && Array.isArray(event.categories)) {
+        event.categories.forEach((category) => {
+          if (category && typeof category === 'string') {
+            const normalized = category.trim()
+            if (normalized) {
+              categoryMap.set(normalized, (categoryMap.get(normalized) || 0) + 1)
+            }
+          }
+        })
+      }
+    })
+    
+    // If we found categories in events, use them
+    if (categoryMap.size > 0) {
+      return Array.from(categoryMap.entries())
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+    }
+    
+    // Fallback: use hardcoded categories with accurate counts
     const hardcodedCategories = [
       "Education Training",
       "Medical & Pharma",
@@ -351,70 +378,125 @@ export default function EventsPageContent() {
       "Miscellaneous",
     ]
 
-    // Calculate counts for each category
     return hardcodedCategories.map((categoryName) => {
-      const count = events.filter((event) =>
-        event.categories?.some((cat) => cat.toLowerCase().trim() === categoryName.toLowerCase().trim()),
-      ).length
+      const count = events.filter((event) => {
+        if (!event.categories || !Array.isArray(event.categories)) return false
+        return event.categories.some((cat) => {
+          if (!cat || typeof cat !== 'string') return false
+          return cat.toLowerCase().includes(categoryName.toLowerCase())
+        })
+      }).length
       return { name: categoryName, count }
-    })
+    }).filter(cat => cat.count > 0)
   }, [events])
 
-  // Get unique formats from eventType
-  const formats = useMemo(() => {
-    return [
-      {
-        name: "Trade Show",
-        count: events.filter((e) =>
-          String(e.eventType || "")
-            .toLowerCase()
-            .includes("trade show"),
-        ).length,
-      },
-      {
-        name: "Conference",
-        count: events.filter((e) =>
-          String(e.eventType || "")
-            .toLowerCase()
-            .includes("conference"),
-        ).length,
-      },
-      {
-        name: "Workshops",
-        count: events.filter((e) =>
-          String(e.eventType || "")
-            .toLowerCase()
-            .includes("workshop"),
-        ).length,
-      },
-    ]
-  }, [events])
+  // Fixed formats with accurate counts
+const formats = useMemo(() => {
+  const formatMap = new Map<string, number>()
+  
+  // Add "All Formats" option
+  formatMap.set("All Formats", events.length)
+  
+  events.forEach((event) => {
+    let formatName = ""
+    
+    // Try to get format from eventType first
+    if (event.eventType && typeof event.eventType === 'string') {
+      formatName = event.eventType.trim()
+    } 
+    // Fallback to first category
+    else if (event.categories && Array.isArray(event.categories) && event.categories.length > 0) {
+      const firstCategory = event.categories[0]
+      if (typeof firstCategory === 'string') {
+        formatName = firstCategory.trim()
+      }
+    }
+    
+    // If still no format name, use "Other"
+    if (!formatName) {
+      formatName = "Other"
+    }
+    
+    // Normalize common format names
+    const normalizedFormat = formatName.toLowerCase()
+    if (normalizedFormat.includes("trade show") || normalizedFormat.includes("tradeshow")) {
+      formatName = "Trade Show"
+    } else if (normalizedFormat.includes("conference")) {
+      formatName = "Conference"
+    } else if (normalizedFormat.includes("workshop") || normalizedFormat.includes("workshops")) {
+      formatName = "Workshops"
+    } else if (normalizedFormat.includes("exhibition") || normalizedFormat.includes("expo")) {
+      formatName = "Exhibition"
+    } else if (normalizedFormat.includes("seminar")) {
+      formatName = "Seminar"
+    } else if (normalizedFormat.includes("meetup") || normalizedFormat.includes("meeting")) {
+      formatName = "Meetup"
+    }
+    
+    // Count the format
+    formatMap.set(formatName, (formatMap.get(formatName) || 0) + 1)
+  })
+  
+  // Remove "All Formats" from the count map since we'll add it separately
+  const allFormatsCount = formatMap.get("All Formats") || 0
+  formatMap.delete("All Formats")
+  
+  // Convert to array and sort by count
+  const formatArray = Array.from(formatMap.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+  
+  // Add "All Formats" at the top
+  return [
+    { name: "All Formats", count: allFormatsCount },
+    ...formatArray
+  ]
+}, [events])
 
+  // Fixed locations with accurate counts
   const locations = useMemo(() => {
     if (!events || events.length === 0) return []
 
-    const locationMap = new Map()
+    const locationMap = new Map<string, number>()
+    
     events.forEach((event) => {
+      // Create a unique identifier for this event's location
+      let locationKey = ""
+      
+      // Prefer venue city if available
       if (event.venue?.venueCity) {
-        const city = event.venue.venueCity
-        locationMap.set(city, (locationMap.get(city) || 0) + 1)
+        locationKey = event.venue.venueCity.trim()
+      } 
+      // Fall back to location city
+      else if (event.location?.city) {
+        locationKey = event.location.city.trim()
       }
-      if (event.venue?.venueCountry) {
-        const country = event.venue.venueCountry
-        locationMap.set(country, (locationMap.get(country) || 0) + 1)
+      // Fall back to venue country
+      else if (event.venue?.venueCountry) {
+        locationKey = event.venue.venueCountry.trim()
       }
-      if (event.location?.city) {
-        const city = event.location.city
-        locationMap.set(city, (locationMap.get(city) || 0) + 1)
+      // Last resort: use address
+      else if (event.location?.address) {
+        const addressParts = event.location.address.split(',')
+        locationKey = addressParts[0]?.trim() || "Unknown"
       }
-      if (event.location?.address) {
-        const address = event.location.address
-        locationMap.set(address, (locationMap.get(address) || 0) + 1)
+      
+      // Only count if we have a valid location
+      if (locationKey && locationKey !== "Not Added" && locationKey !== "Unknown") {
+        locationMap.set(locationKey, (locationMap.get(locationKey) || 0) + 1)
       }
     })
+    
+    // Convert to array and sort by count
     return Array.from(locationMap.entries())
       .map(([name, count]) => ({ name, count }))
-      .filter((loc) => loc.name && loc.name !== "Not Added")
+      .sort((a, b) => {
+        // Sort by count descending, then alphabetically
+        if (b.count !== a.count) {
+          return b.count - a.count
+        }
+        return a.name.localeCompare(b.name)
+      })
   }, [events])
 
   // Enhanced categories with search functionality
@@ -568,15 +650,20 @@ export default function EventsPageContent() {
       )
     }
 
+    // Category filter
     if (selectedCategories.length > 0) {
       filtered = filtered.filter((event) =>
-        event.categories.some((cat) =>
-          selectedCategories.some((selectedCat) => cat.toLowerCase().trim() === selectedCat.toLowerCase().trim()),
-        ),
+        event.categories?.some((cat) =>
+          selectedCategories.some((selectedCat) => 
+            cat.toLowerCase().trim() === selectedCat.toLowerCase().trim()
+          )
+        )
       )
     } else if (selectedCategory) {
       filtered = filtered.filter((event) =>
-        event.categories.some((cat) => cat.toLowerCase().trim() === selectedCategory.toLowerCase().trim()),
+        event.categories?.some((cat) => 
+          cat.toLowerCase().trim() === selectedCategory.toLowerCase().trim()
+        )
       )
     }
 
@@ -588,15 +675,24 @@ export default function EventsPageContent() {
 
     // Location filter
     if (selectedLocation) {
-      filtered = filtered.filter(
-        (event) =>
-          event.venue?.venueCity?.toLowerCase().includes(selectedLocation.toLowerCase()) ||
-          event.venue?.venueCountry?.toLowerCase().includes(selectedLocation.toLowerCase()) ||
-          event.location?.city?.toLowerCase().includes(selectedLocation.toLowerCase()) ||
-          event.location?.address?.toLowerCase().includes(selectedLocation.toLowerCase()),
-      )
+      filtered = filtered.filter((event) => {
+        const searchTerm = selectedLocation.toLowerCase()
+        
+        // Check all possible location fields
+        const venueCity = event.venue?.venueCity?.toLowerCase() || ""
+        const venueCountry = event.venue?.venueCountry?.toLowerCase() || ""
+        const eventCity = event.location?.city?.toLowerCase() || ""
+        const eventAddress = event.location?.address?.toLowerCase() || ""
+        
+        // Return true if any location field contains the search term
+        return venueCity.includes(searchTerm) || 
+               venueCountry.includes(searchTerm) || 
+               eventCity.includes(searchTerm) || 
+               eventAddress.includes(searchTerm)
+      })
     }
 
+    // Format filter
     if (selectedFormat && selectedFormat !== "All Formats") {
       filtered = filtered.filter((event) => {
         // Ensure we get a string value

@@ -135,7 +135,7 @@ export default function ExhibitorsTab({ eventId }: ExhibitorsTabProps) {
             {/* Logo Circle */}
             <div className="relative w-28 h-28 -mt-12 bg-white border-4 border-blue-600 rounded-full flex items-center justify-center z-20 group-hover:border-blue-700 transition-colors">
               <Image
-                src={exhibitor.avatar || "/Organizers/maxx.png?height=96&width=96&text=Logo"}
+                src={exhibitor.avatar || "/Organizers/maxx.png"}
                 alt={`${exhibitor.company} logo`}
                 width={80}
                 height={80}

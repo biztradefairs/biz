@@ -45,6 +45,27 @@ interface EventPageContentProps {
   toast: any
 }
 
+// Helper function to get company initials
+const getCompanyInitials = (companyName?: string): string => {
+  if (!companyName || companyName.trim() === "") return "EV";
+  
+  // Remove common suffixes and split by spaces
+  const cleanedName = companyName
+    .replace(/\b(Inc|LLC|Ltd|GmbH|Corp|Co)\b\.?/gi, '')
+    .trim();
+  
+  // Get first two letters from first two words
+  const words = cleanedName.split(/\s+/);
+  
+  if (words.length === 1) {
+    // If only one word, take first two characters
+    return words[0].substring(0, 2).toUpperCase();
+  }
+  
+  // Take first character from first two words
+  return (words[0].charAt(0) + words[1].charAt(0)).toUpperCase();
+};
+
 export default function EventPageContent({ event, session, router, toast }: EventPageContentProps) {
   // ALL useState calls must be at the top, before any conditional logic
   const [isSaved, setIsSaved] = useState(false)
@@ -673,7 +694,7 @@ export default function EventPageContent({ event, session, router, toast }: Even
                   </div>
                 </div>
 
-                {/* UPDATED ORGANIZER CARD - Show company name */}
+                {/* UPDATED ORGANIZER CARD - Show company initials */}
                 <Card className="border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer">
                   <Link href={`/organizer/${event.organizer?.id}`}>
                     <CardHeader className="border-b border-gray-100 pb-2">
@@ -683,20 +704,25 @@ export default function EventPageContent({ event, session, router, toast }: Even
                     <CardContent className="flex flex-col md:flex-row justify-between items-center gap-4 py-4">
                       {/* Left Section: Organizer Info */}
                       <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 flex items-center justify-center border border-gray-100 rounded overflow-hidden bg-white">
-                          <Image
-                            src={event.organizer?.avatar || event.organizer?.companyLogo || "/placeholder.svg"}
-                            alt="Organizer"
-                            width={64}
-                            height={64}
-                            className="object-contain"
-                          />
+                        <div className="relative w-16 h-16 flex items-center justify-center border border-gray-100 rounded-full overflow-hidden bg-blue-50">
+                          {event.organizer?.avatar || event.organizer?.companyLogo ? (
+                            <Image
+                              src={event.organizer.avatar || event.organizer.companyLogo}
+                              alt={event.organizer?.company || "Organizer"}
+                              fill
+                              className="object-cover"
+                            />
+                          ) : (
+                            <span className="text-lg font-semibold text-blue-600">
+                              {getCompanyInitials(event.organizer?.company)}
+                            </span>
+                          )}
                         </div>
 
                         <div>
                           <div className="flex items-center gap-2 mb-1">
                             <h3 className="font-semibold text-gray-900 text-lg">
-                              {event.organizer?.company}
+                              {event.organizer?.company || "Event Organizer"}
                             </h3>
                             <span className="bg-blue-100 text-blue-700 text-[11px] font-medium px-2 py-[2px] rounded">
                               Top Rated
@@ -999,6 +1025,7 @@ export default function EventPageContent({ event, session, router, toast }: Even
                 <SpeakersTab eventId={event.id} />
               </TabsContent>
 
+              {/* UPDATED ORGANIZER TAB WITH COMPANY INITIALS */}
               <TabsContent value="organizer">
                 <Card>
                   <CardHeader>
@@ -1009,15 +1036,16 @@ export default function EventPageContent({ event, session, router, toast }: Even
                       <div className="flex items-start gap-4">
                         <Avatar className="w-16 h-16">
                           <AvatarImage
-                            src={event.organizer?.avatar || "/api/placeholder/64/64?text=Org"}
+                            src={event.organizer?.avatar || event.organizer?.companyLogo}
+                            alt={event.organizer?.company || "Organizer"}
                           />
-                          <AvatarFallback className="text-lg">
-                            {event.organizer?.company?.charAt(0)}
+                          <AvatarFallback className="bg-blue-50 text-blue-600 text-lg font-semibold">
+                            {getCompanyInitials(event.organizer?.company)}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1">
                           <h4 className="font-semibold text-lg">
-                            {event.organizer?.company}
+                            {event.organizer?.company || "Event Organizer"}
                           </h4>
                           <p className="text-gray-600 mb-3">
                             Professional event organizer

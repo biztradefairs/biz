@@ -1,37 +1,52 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
-import dbConnect from "@/lib/dbConnect"; // your MongoDB connection
+import dbConnect from "@/lib/dbConnect";
 import Otp from "@/models/otp";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   try {
     const { email } = await req.json();
+
     if (!email) {
-      return NextResponse.json({ message: "Email is required" }, { status: 400 });
+      return NextResponse.json(
+        { message: "Email is required" },
+        { status: 400 }
+      );
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // 🔹 1. CHECK IF USER ALREADY EXISTS
+    const existingUser = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (existingUser) {
+      return NextResponse.json(
+        {
+          alreadyRegistered: true,
+          message: "Email already registered. Please login.",
+        },
+        { status: 409 }
+      );
+    }
+
+    // 🔹 2. SEND OTP ONLY IF USER DOES NOT EXIST
     await dbConnect();
 
-    const normalizedEmail = email.trim().toLowerCase();
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // Expiry time = 5 mins
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-    // Remove old OTPs for this email
     await Otp.deleteMany({ email: normalizedEmail });
-
-    // Save new OTP
     await Otp.create({ email: normalizedEmail, otp, expiresAt });
 
-    // Setup nodemailer
     const transporter = nodemailer.createTransport({
       service: "gmail",
       secure: true,
       auth: {
-        user: process.env.EMAIL_USER || "mondalrohan201@gmail.com",
-        pass: process.env.EMAIL_PASS || "vwpg xiry lmgg jgbp",
-
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
       },
     });
 
@@ -45,6 +60,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "OTP sent successfully" });
   } catch (err) {
     console.error("Send OTP error:", err);
-    return NextResponse.json({ message: "Failed to send OTP" }, { status: 500 });
+    return NextResponse.json(
+      { message: "Failed to send OTP" },
+      { status: 500 }
+    );
   }
 }

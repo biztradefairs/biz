@@ -145,10 +145,10 @@ interface ValidationErrors {
 // Helper function to convert UTC time to local time string
 const convertUTCToLocalTime = (utcDateString: string, timezone: string = "Asia/Kolkata"): string => {
   if (!utcDateString) return "";
-  
+
   try {
     const date = new Date(utcDateString);
-    
+
     // Format to local time in HH:mm format
     return date.toLocaleTimeString('en-US', {
       timeZone: timezone,
@@ -162,17 +162,19 @@ const convertUTCToLocalTime = (utcDateString: string, timezone: string = "Asia/K
   }
 };
 
+
+
 // Helper function to convert local time to UTC
 const convertLocalToUTC = (localTime: string, dateString: string, timezone: string = "Asia/Kolkata"): string => {
   if (!localTime || !dateString) return "";
-  
+
   try {
     // Create a date string with the local time
     const localDateTime = `${dateString}T${localTime}:00`;
-    
+
     // Parse as local time in the specified timezone
     const date = new Date(localDateTime);
-    
+
     // Convert to UTC string
     return date.toISOString();
   } catch (error) {
@@ -184,18 +186,18 @@ const convertLocalToUTC = (localTime: string, dateString: string, timezone: stri
 // Helper function to convert 24-hour time to 12-hour format with AM/PM
 const formatTimeTo12Hour = (time24: string): string => {
   if (!time24 || time24.trim() === "") return "";
-  
+
   try {
     // Extract hours and minutes
     const [hoursStr, minutesStr] = time24.split(':');
     const hours = parseInt(hoursStr, 10);
     const minutes = parseInt(minutesStr, 10);
-    
+
     if (isNaN(hours) || isNaN(minutes)) return time24;
-    
+
     const period = hours >= 12 ? 'pm' : 'am';
     const hours12 = hours % 12 || 12;
-    
+
     return `${hours12}:${minutes.toString().padStart(2, '0')}${period}`;
   } catch (error) {
     return time24;
@@ -371,25 +373,25 @@ export default function CreateEvent({ organizerId }: { organizerId: string }) {
     { id: "preview", label: "Preview" },
   ]
   const handleVenueSelect = (venueId: string) => {
-  setSelectedVenueId(venueId)
+    setSelectedVenueId(venueId)
   }
-const handleVenueChange = (venueData: {
-  venueId?: string
-  venueName: string
-  venueAddress: string
-  city: string
-  state?: string
-  country?: string
-}) => {
-  setSelectedVenueId(venueData.venueId || "")
-  setFormData((prev) => ({
-    ...prev,
-    venueId: venueData.venueId || "",
-    venue: venueData.venueName,
-    address: venueData.venueAddress,
-    city: venueData.city,
-  }))
-}
+  const handleVenueChange = (venueData: {
+    venueId?: string
+    venueName: string
+    venueAddress: string
+    city: string
+    state?: string
+    country?: string
+  }) => {
+    setSelectedVenueId(venueData.venueId || "")
+    setFormData((prev) => ({
+      ...prev,
+      venueId: venueData.venueId || "",
+      venue: venueData.venueName,
+      address: venueData.venueAddress,
+      city: venueData.city,
+    }))
+  }
 
   const eventTypes = [
     "Conference",
@@ -444,11 +446,14 @@ const handleVenueChange = (venueData: {
   }
 
   const removeHighlight = (index: number) => {
-    setFormData((prev) => ({
+    setFormData((prev: EventFormData) => ({
       ...prev,
-      highlights: prev.highlights.filter((_, i) => i !== index),
+      highlights: prev.highlights.filter(
+        (_: string, i: number) => i !== index
+      ),
     }))
   }
+
 
   const addTag = () => {
     if (newTag.trim()) {
@@ -461,11 +466,14 @@ const handleVenueChange = (venueData: {
   }
 
   const removeTag = (index: number) => {
-    setFormData((prev) => ({
+    setFormData((prev: EventFormData) => ({
       ...prev,
-      tags: prev.tags.filter((_, i) => i !== index),
+      tags: prev.tags.filter(
+        (_: string, i: number) => i !== index
+      ),
     }))
   }
+
 
   const addCustomSpaceCost = () => {
     setFormData((prev) => ({
@@ -500,21 +508,21 @@ const handleVenueChange = (venueData: {
   const handleCategoryToggle = (category: string) => {
     setFormData((prev) => {
       const currentCategories = prev.categories;
-      
+
       if (currentCategories.includes(category)) {
         return {
           ...prev,
           categories: currentCategories.filter((c) => c !== category),
         };
       }
-      
+
       if (currentCategories.length < 2) {
         return {
           ...prev,
           categories: [...currentCategories, category],
         };
       }
-      
+
       return prev;
     });
   };
@@ -692,7 +700,7 @@ const handleVenueChange = (venueData: {
 
       // FIX: Convert local times to UTC before sending to backend
       const startDateWithTime = convertLocalToUTC(
-        formData.dailyStart, 
+        formData.dailyStart,
         getDatePart(formData.startDate),
         formData.timezone
       ) || formData.startDate;
@@ -1304,139 +1312,139 @@ const handleVenueChange = (venueData: {
             </CardContent>
           </Card>
 
-         <Card>
-  <CardHeader>
-    <CardTitle className="flex items-center gap-2">
-      <Clock className="w-5 h-5" />
-      Event Timing
-    </CardTitle>
-  </CardHeader>
-  <CardContent className="space-y-4">
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div>
-        <Label htmlFor="startDate">Start Date *</Label>
-        <Input
-          id="startDate"
-          type="date"
-          value={formData.startDate ? getDatePart(formData.startDate) : ""}
-          onChange={(e) => {
-            const dateValue = e.target.value
-            const timeValue = getTimePart(formData.startDate)
-            const newStartDate = dateValue ? `${dateValue}T${timeValue}:00.000Z` : ""
-            setFormData((prevData) => ({ ...prevData, startDate: newStartDate }))
-          }}
-        />
-        {showValidationErrors && (!formData.startDate || formData.startDate.trim() === "") && (
-          <p className="text-sm text-red-500 mt-1">This field is required for publishing</p>
-        )}
-      </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="w-5 h-5" />
+                Event Timing
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="startDate">Start Date *</Label>
+                  <Input
+                    id="startDate"
+                    type="date"
+                    value={formData.startDate ? getDatePart(formData.startDate) : ""}
+                    onChange={(e) => {
+                      const dateValue = e.target.value
+                      const timeValue = getTimePart(formData.startDate)
+                      const newStartDate = dateValue ? `${dateValue}T${timeValue}:00.000Z` : ""
+                      setFormData((prevData) => ({ ...prevData, startDate: newStartDate }))
+                    }}
+                  />
+                  {showValidationErrors && (!formData.startDate || formData.startDate.trim() === "") && (
+                    <p className="text-sm text-red-500 mt-1">This field is required for publishing</p>
+                  )}
+                </div>
 
-      <div>
-        <Label htmlFor="dailyStart">Daily Start Time *</Label>
-        <Input
-          id="dailyStart"
-          type="time"
-          value={formData.dailyStart}
-          onChange={(e) => {
-            const timeValue = e.target.value
-            setFormData((prevData) => ({ 
-              ...prevData, 
-              dailyStart: timeValue 
-            }))
-            
-            // Update the startDate with UTC time
-            const dateValue = getDatePart(formData.startDate) || new Date().toISOString().split('T')[0]
-            const utcTime = convertLocalToUTC(timeValue, dateValue, formData.timezone)
-            if (utcTime) {
-              setFormData(prevData => ({ 
-                ...prevData, 
-                startDate: utcTime 
-              }))
-            }
-          }}
-        />
-        <p className="text-xs text-muted-foreground mt-1">
-          Time when the event starts each day - Display: {formatTimeTo12Hour(formData.dailyStart)}
-        </p>
-      </div>
+                <div>
+                  <Label htmlFor="dailyStart">Daily Start Time *</Label>
+                  <Input
+                    id="dailyStart"
+                    type="time"
+                    value={formData.dailyStart}
+                    onChange={(e) => {
+                      const timeValue = e.target.value
+                      setFormData((prevData) => ({
+                        ...prevData,
+                        dailyStart: timeValue
+                      }))
 
-      <div>
-        <Label htmlFor="endDate">End Date *</Label>
-        <Input
-          id="endDate"
-          type="date"
-          value={formData.endDate ? getDatePart(formData.endDate) : ""}  
-          onChange={(e) => {
-            const dateValue = e.target.value
-            const timeValue = getTimePart(formData.endDate)
-            const newEndDate = dateValue ? `${dateValue}T${timeValue}:00.000Z` : ""
-            setFormData((prevData) => ({ ...prevData, endDate: newEndDate }))
-          }}
-        />
-        {showValidationErrors && (!formData.endDate || formData.endDate.trim() === "") && (
-          <p className="text-sm text-red-500 mt-1">This field is required for publishing</p>
-        )}
-      </div>
+                      // Update the startDate with UTC time
+                      const dateValue = getDatePart(formData.startDate) || new Date().toISOString().split('T')[0]
+                      const utcTime = convertLocalToUTC(timeValue, dateValue, formData.timezone)
+                      if (utcTime) {
+                        setFormData(prevData => ({
+                          ...prevData,
+                          startDate: utcTime
+                        }))
+                      }
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Time when the event starts each day - Display: {formatTimeTo12Hour(formData.dailyStart)}
+                  </p>
+                </div>
 
-      <div>
-        <Label htmlFor="dailyEnd">Daily End Time *</Label>
-        <Input
-          id="dailyEnd"
-          type="time"
-          value={formData.dailyEnd}
-          onChange={(e) => {
-            const timeValue = e.target.value
-            setFormData((prevData) => ({ 
-              ...prevData, 
-              dailyEnd: timeValue 
-            }))
-            
-            // Update the endDate with UTC time
-            const dateValue = getDatePart(formData.endDate) || new Date().toISOString().split('T')[0]
-            const utcTime = convertLocalToUTC(timeValue, dateValue, formData.timezone)
-            if (utcTime) {
-              setFormData(prevData => ({ 
-                ...prevData, 
-                endDate: utcTime 
-              }))
-            }
-          }}
-        />
-        <p className="text-xs text-muted-foreground mt-1">
-          Time when the event ends each day - Display: {formatTimeTo12Hour(formData.dailyEnd)}
-        </p>
-      </div>
+                <div>
+                  <Label htmlFor="endDate">End Date *</Label>
+                  <Input
+                    id="endDate"
+                    type="date"
+                    value={formData.endDate ? getDatePart(formData.endDate) : ""}
+                    onChange={(e) => {
+                      const dateValue = e.target.value
+                      const timeValue = getTimePart(formData.endDate)
+                      const newEndDate = dateValue ? `${dateValue}T${timeValue}:00.000Z` : ""
+                      setFormData((prevData) => ({ ...prevData, endDate: newEndDate }))
+                    }}
+                  />
+                  {showValidationErrors && (!formData.endDate || formData.endDate.trim() === "") && (
+                    <p className="text-sm text-red-500 mt-1">This field is required for publishing</p>
+                  )}
+                </div>
 
-      <div>
-        <Label htmlFor="timezone">Timezone</Label>
-        <Select
-          value={formData.timezone}
-          onValueChange={(value) => setFormData((prevData) => ({ ...prevData, timezone: value }))}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Asia/Kolkata">Asia/Kolkata (IST) UTC+5:30</SelectItem>
-            <SelectItem value="America/New_York">America/New_York (EST) UTC-5</SelectItem>
-            <SelectItem value="Europe/London">Europe/London (GMT) UTC+0</SelectItem>
-            <SelectItem value="Asia/Tokyo">Asia/Tokyo (JST) UTC+9</SelectItem>
-          </SelectContent>
-        </Select>
-        <p className="text-xs text-muted-foreground mt-1">
-          Times will be converted to this timezone
-        </p>
-      </div>
-    </div>
-  </CardContent>
-</Card>
+                <div>
+                  <Label htmlFor="dailyEnd">Daily End Time *</Label>
+                  <Input
+                    id="dailyEnd"
+                    type="time"
+                    value={formData.dailyEnd}
+                    onChange={(e) => {
+                      const timeValue = e.target.value
+                      setFormData((prevData) => ({
+                        ...prevData,
+                        dailyEnd: timeValue
+                      }))
+
+                      // Update the endDate with UTC time
+                      const dateValue = getDatePart(formData.endDate) || new Date().toISOString().split('T')[0]
+                      const utcTime = convertLocalToUTC(timeValue, dateValue, formData.timezone)
+                      if (utcTime) {
+                        setFormData(prevData => ({
+                          ...prevData,
+                          endDate: utcTime
+                        }))
+                      }
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Time when the event ends each day - Display: {formatTimeTo12Hour(formData.dailyEnd)}
+                  </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="timezone">Timezone</Label>
+                  <Select
+                    value={formData.timezone}
+                    onValueChange={(value) => setFormData((prevData) => ({ ...prevData, timezone: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Asia/Kolkata">Asia/Kolkata (IST) UTC+5:30</SelectItem>
+                      <SelectItem value="America/New_York">America/New_York (EST) UTC-5</SelectItem>
+                      <SelectItem value="Europe/London">Europe/London (GMT) UTC+0</SelectItem>
+                      <SelectItem value="Asia/Tokyo">Asia/Tokyo (JST) UTC+9</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Times will be converted to this timezone
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           <div>
-            <AddVenue 
-  organizerId={organizerId} 
-  onVenueChange={handleVenueChange}
-  selectedVenueId={selectedVenueId}
-/>
+            <AddVenue
+              organizerId={organizerId}
+              onVenueChange={handleVenueChange}
+              selectedVenueId={selectedVenueId}
+            />
           </div>
         </TabsContent>
 
@@ -1455,7 +1463,12 @@ const handleVenueChange = (venueData: {
                   value={newHighlight}
                   onChange={(e) => setNewHighlight(e.target.value)}
                   placeholder="Add event highlight"
-                  onKeyPress={(e) => e.key === "Enter" && addHighlight()}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addHighlight();
+                    }
+                  }}
                 />
                 <Button onClick={addHighlight}>
                   <Plus className="w-4 h-4" />
@@ -1463,9 +1476,20 @@ const handleVenueChange = (venueData: {
               </div>
               <div className="flex flex-wrap gap-2">
                 {formData.highlights.map((highlight, index) => (
-                  <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                    {highlight}
-                    <X className="w-3 h-3 cursor-pointer" onClick={() => removeHighlight(index)} />
+                  <Badge
+                    key={index}
+                    variant="secondary"
+                    className="flex items-center gap-1 px-3 py-1.5"
+                  >
+                    <span>{highlight}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeHighlight(index)}
+                      className="ml-1 hover:bg-gray-300 rounded-full p-0.5 transition-colors"
+                      aria-label={`Remove ${highlight}`}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
                   </Badge>
                 ))}
               </div>
@@ -1482,12 +1506,29 @@ const handleVenueChange = (venueData: {
                   <Label>Event Tags & Keywords *</Label>
                   <div className="flex flex-wrap gap-2 mb-2">
                     {formData.tags.map((tag, index) => (
-                      <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                        {tag}
-                        <X className="w-3 h-3 cursor-pointer" onClick={() => removeTag(index)} />
+                      <Badge
+                        key={index}
+                        variant="secondary"
+                        className="flex items-center gap-2 px-3 py-1.5"
+                      >
+                        <span>{tag}</span>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            removeTag(index)
+                          }}
+                          className="hover:bg-gray-300 rounded-full p-0.5 transition-colors"
+                          aria-label={`Remove ${tag}`}
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
                       </Badge>
                     ))}
                   </div>
+
                   <div className="flex gap-2">
                     <Input
                       value={newTag}
@@ -1531,7 +1572,7 @@ const handleVenueChange = (venueData: {
                       <SelectItem value="Casual">Casual</SelectItem>
                       <SelectItem value="Business Casual">Business Casual</SelectItem>
                       <SelectItem value="Formal">Formal</SelectItem>
-                      <SelectItem value="Black Tie">Black Tie</SelectItem>
+                      {/* <SelectItem value="Black Tie">Black Tie</SelectItem> */}
                     </SelectContent>
                   </Select>
                 </div>
@@ -1555,7 +1596,7 @@ const handleVenueChange = (venueData: {
               </div>
             </CardContent>
           </Card>
-
+          {/* 
           <Card>
             <CardHeader>
               <CardTitle>Event Features</CardTitle>
@@ -1583,7 +1624,7 @@ const handleVenueChange = (venueData: {
                 />
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
         </TabsContent>
 
         {/* Pricing & Space Tab */}
@@ -1880,9 +1921,8 @@ const handleVenueChange = (venueData: {
             </CardHeader>
             <CardContent className="space-y-4">
               <div
-                className={`border-2 border-dashed border-gray-300 rounded-lg p-8 text-center ${
-                  isUploadingImages ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:border-gray-400"
-                } transition-colors`}
+                className={`border-2 border-dashed border-gray-300 rounded-lg p-8 text-center ${isUploadingImages ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:border-gray-400"
+                  } transition-colors`}
                 onClick={() => !isUploadingImages && fileInputRef.current?.click()}
               >
                 {isUploadingImages ? (

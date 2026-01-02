@@ -1,10 +1,10 @@
-// components/navbar.tsx
+// components/navbar.tsx (Updated)
 "use client";
 
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ChevronDown, User, LogOut, Settings, Bell } from "lucide-react";
+import { ChevronDown, User, LogOut, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   DropdownMenu,
@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { AdminNotificationsDropdown } from "@/components/AdminNotificationsDropdown";
 
 export default function Navbar() {
   const [exploreOpen, setExploreOpen] = useState(false);
@@ -22,21 +23,16 @@ export default function Navbar() {
   const toggleExplore = () => setExploreOpen((prev) => !prev);
 
   const handleLogout = () => {
-    // Clear authentication data
     localStorage.removeItem("superAdminToken");
     localStorage.removeItem("superAdmin");
-    
-    // Redirect to signin page
     router.push("/sign-in");
   };
 
   const navigateToProfile = () => {
-    // You can implement profile navigation if needed
     console.log("Navigate to profile");
   };
 
   const navigateToSettings = () => {
-    // You can implement settings navigation if needed
     console.log("Navigate to settings");
   };
 
@@ -111,10 +107,8 @@ export default function Navbar() {
               </p>
             </Link>
 
-            {/* Notifications */}
-            <Button variant="ghost" size="sm">
-              <Bell className="w-4" />
-            </Button>
+            {/* Admin Notifications */}
+            <AdminNotificationsDropdown />
 
             {/* Profile Menu */}
             <DropdownMenu>

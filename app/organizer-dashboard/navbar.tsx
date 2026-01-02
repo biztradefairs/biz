@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { useDashboard } from "@/contexts/dashboard-context";
-import { NotificationsDropdown } from "@/components/notifications-dropdown";
+import { UserNotificationsDropdown } from "@/components/organizerNotificationDropdown";
 
 export default function Navbar() {
   const [exploreOpen, setExploreOpen] = useState(false);
@@ -136,7 +136,7 @@ export default function Navbar() {
             </p>
 
             {/* Notifications Dropdown */}
-            <NotificationsDropdown />
+            <UserNotificationsDropdown/>
 
             {/* Profile Menu */}
             <DropdownMenu>

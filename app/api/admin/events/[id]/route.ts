@@ -65,6 +65,181 @@ function isBase64(str: string): boolean {
     return false
   }
 }
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session || (session.user?.role !== "SUPER_ADMIN" && session.user?.role !== "SUB_ADMIN")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { id } = await params
+
+    const event = await prisma.event.findUnique({
+      where: { id },
+      include: {
+        organizer: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            company: true,
+            phone: true,
+          }
+        },
+        venue: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            venueName: true,
+            venueAddress: true,
+            venueCity: true,
+            venueState: true,
+            venueCountry: true,
+          }
+        },
+        ticketTypes: {
+          select: {
+            id: true,
+            name: true,
+            price: true,
+            quantity: true,
+            sold: true,
+          }
+        },
+        exhibitionSpaces: {
+          select: {
+            id: true,
+            name: true,
+            spaceType: true,
+            basePrice: true,
+            area: true,
+            minArea: true,
+          }
+        },
+        rejectedBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
+      }
+    })
+
+    if (!event) {
+      return NextResponse.json({ 
+        success: false,
+        error: "Event not found" 
+      }, { status: 404 })
+    }
+
+    // Transform event data
+    const transformedEvent = {
+      id: event.id,
+      title: event.title,
+      description: event.description,
+      shortDescription: event.shortDescription,
+      slug: event.slug,
+      startDate: event.startDate.toISOString(),
+      endDate: event.endDate.toISOString(),
+      registrationStart: event.registrationStart.toISOString(),
+      registrationEnd: event.registrationEnd.toISOString(),
+      timezone: event.timezone,
+      venue: event.venue?.venueName || 
+             (event.venue?.firstName ? `${event.venue.firstName} ${event.venue.lastName || ""}`.trim() : "Virtual Event"),
+      address: event.venue?.venueAddress || "",
+      city: event.venue?.venueCity || "",
+      state: event.venue?.venueState || "",
+      country: event.venue?.venueCountry || "",
+      status: event.status,
+      category: event.category || [],
+      tags: event.tags || [],
+      edition: event.edition,
+      eventType: event.eventType || [],
+      isVirtual: event.isVirtual,
+      virtualLink: event.virtualLink,
+      maxAttendees: event.maxAttendees,
+      currentAttendees: event.currentAttendees,
+      currency: event.currency,
+      images: event.images || [],
+      bannerImage: event.bannerImage,
+      thumbnailImage: event.thumbnailImage,
+      brochure: event.brochure,
+      layoutPlan: event.layoutPlan,
+      documents: event.documents || [],
+      isFeatured: event.isFeatured,
+      isVIP: event.isVIP,
+      isPublic: event.isPublic,
+      requiresApproval: event.requiresApproval,
+      allowWaitlist: event.allowWaitlist,
+      refundPolicy: event.refundPolicy,
+      metaTitle: event.metaTitle,
+      metaDescription: event.metaDescription,
+      averageRating: event.averageRating,
+      totalReviews: event.totalReviews,
+      
+      // Organizer info
+      organizer: {
+        id: event.organizer.id,
+        name: `${event.organizer.firstName} ${event.organizer.lastName}`.trim(),
+        email: event.organizer.email,
+        company: event.organizer.company || "",
+        phone: event.organizer.phone || "",
+      },
+      
+      // Ticket types
+      ticketTypes: event.ticketTypes.map(ticket => ({
+        id: ticket.id,
+        name: ticket.name,
+        price: ticket.price,
+        quantity: ticket.quantity,
+        sold: ticket.sold,
+      })),
+      
+      // Exhibition spaces
+      exhibitionSpaces: event.exhibitionSpaces.map(space => ({
+        id: space.id,
+        name: space.name,
+        spaceType: space.spaceType,
+        basePrice: space.basePrice,
+        area: space.area,
+        minArea: space.minArea,
+      })),
+      
+      // Rejection info (if rejected)
+      rejectionReason: event.rejectionReason,
+      rejectedAt: event.rejectedAt?.toISOString(),
+      rejectedBy: event.rejectedBy ? {
+        id: event.rejectedBy.id,
+        name: event.rejectedBy.name || "Unknown Admin",
+        email: event.rejectedBy.email
+      } : null,
+      
+      // Timestamps
+      createdAt: event.createdAt.toISOString(),
+      updatedAt: event.updatedAt.toISOString(),
+    }
+
+    return NextResponse.json({
+      success: true,
+      event: transformedEvent
+    })
+
+  } catch (error: any) {
+    console.error("Error fetching event:", error)
+    return NextResponse.json({ 
+      success: false,
+      error: "Internal server error",
+      details: error.message 
+    }, { status: 500 })
+  }
+}
 
 export async function PATCH(
   request: Request, 

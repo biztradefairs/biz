@@ -619,303 +619,435 @@ export default function CreateEvent({ organizerId }: { organizerId: string }) {
     }
   }
 
-  const handlePublishEvent = async () => {
-    if (isUploadingBrochure || isUploadingLayoutPlan || isUploadingImages) {
-      toast({
-        title: "Please Wait",
-        description: "File uploads are still in progress. Please wait for them to complete.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    const newValidationErrors: ValidationErrors = {}
-
-    if (!formData.title.trim()) newValidationErrors.title = "Title is required for publishing"
-    if (!formData.slug.trim()) newValidationErrors.slug = "Slug is required for publishing"
-    if (!formData.description.trim()) newValidationErrors.description = "Description is required for publishing"
-    if (!formData.eventType.trim()) newValidationErrors.eventType = "Event type is required for publishing"
-    if (!formData.startDate.trim()) newValidationErrors.startDate = "Start date is required for publishing"
-    if (!formData.endDate.trim()) newValidationErrors.endDate = "End date is required for publishing"
-
-    if (formData.tags.length === 0) newValidationErrors.tags = "Event tags & keywords are required for publishing"
-
-    setValidationErrors(newValidationErrors)
-
-    if (Object.keys(newValidationErrors).length > 0) {
-      return
-    }
-
-    setIsPublishing(true)
-    try {
-      const exhibitionSpaces = formData.spaceCosts
-        .filter((cost) => cost.type.trim() !== "")
-        .map((cost) => {
-          let spaceType
-          const spaceName = cost.type?.toLowerCase() || ""
-
-          if (spaceName.includes("shell space") || spaceName.includes("standard booth")) {
-            spaceType = "SHELL_SPACE"
-          } else if (spaceName.includes("raw space")) {
-            spaceType = "RAW_SPACE"
-          } else if (spaceName.includes("2 side open")) {
-            spaceType = "TWO_SIDE_OPEN"
-          } else if (spaceName.includes("3 side open")) {
-            spaceType = "THREE_SIDE_OPEN"
-          } else if (spaceName.includes("4 side open")) {
-            spaceType = "FOUR_SIDE_OPEN"
-          } else if (spaceName.includes("mezzanine")) {
-            spaceType = "MEZZANINE"
-          } else if (spaceName.includes("additional power")) {
-            spaceType = "ADDITIONAL_POWER"
-          } else if (spaceName.includes("compressed air")) {
-            spaceType = "COMPRESSED_AIR"
-          } else {
-            spaceType = "CUSTOM"
-          }
-
-          return {
-            spaceType: spaceType,
-            name: cost.type,
-            description: cost.description || "",
-            area: cost.minArea || 0,
-            dimensions: cost.minArea ? `${cost.minArea} sq.m` : "",
-            location: null,
-            basePrice: cost.pricePerSqm || cost.pricePerUnit || 0,
-            pricePerSqm: cost.pricePerSqm || null,
-            minArea: cost.minArea || null,
-            pricePerUnit: cost.pricePerUnit || null,
-            unit: cost.unit || null,
-            currency: formData.currency,
-            powerIncluded: false,
-            additionalPowerRate: cost.type.toLowerCase().includes("power") ? cost.pricePerUnit || 0 : null,
-            compressedAirRate: cost.type.toLowerCase().includes("air") ? cost.pricePerUnit || 0 : null,
-            isFixed: cost.isFixed || false,
-            isAvailable: true,
-            maxBooths: null,
-            bookedBooths: 0,
-            setupRequirements: null,
-          }
-        })
-
-      // FIX: Convert local times to UTC before sending to backend
-      const startDateWithTime = convertLocalToUTC(
-        formData.dailyStart,
-        getDatePart(formData.startDate),
-        formData.timezone
-      ) || formData.startDate;
-
-      const endDateWithTime = convertLocalToUTC(
-        formData.dailyEnd,
-        getDatePart(formData.endDate),
-        formData.timezone
-      ) || formData.endDate;
-
-      const eventData = {
-        title: formData.title,
-        slug: formData.slug,
-        description: formData.description,
-        shortDescription: formData.description.substring(0, 200),
-        category: formData.categories.length > 0 ? formData.categories.join(", ") : formData.eventType || null,
-        edition: formData.edition || null,
-        tags: formData.tags,
-        startDate: startDateWithTime,
-        endDate: endDateWithTime,
-        registrationStart: startDateWithTime,
-        registrationEnd: endDateWithTime,
-        timezone: formData.timezone,
-        isVirtual: false,
-        address: formData.address,
-        location: formData.venue,
-        city: formData.city,
-        state: "",
-        country: "India",
-        venue: formData.venueId,
-        currency: formData.currency,
-        images: formData.images,
-        documents: [formData.brochure, formData.layoutPlan].filter(Boolean),
-        brochure: formData.brochure || null,
-        layoutPlan: formData.layoutPlan || null,
-        bannerImage: formData.images[0] || null,
-        thumbnailImage: formData.images[0] || null,
-        isPublic: true,
-        requiresApproval: false,
-        allowWaitlist: false,
-        status: "published",
-        featured: formData.featured,
-        vip: formData.vip,
-        exhibitionSpaces: exhibitionSpaces,
-        eventType: [formData.eventType],
-        maxAttendees: null,
-        ticketTypes: [
-          {
-            name: "General",
-            description: "General admission ticket",
-            price: formData.generalPrice,
-            quantity: 1000,
-            isActive: formData.generalPrice > 0,
-          },
-          {
-            name: "Student",
-            description: "Student discount ticket",
-            price: formData.studentPrice,
-            quantity: 500,
-            isActive: formData.studentPrice > 0,
-          },
-          {
-            name: "VIP",
-            description: "VIP access ticket",
-            price: formData.vipPrice,
-            quantity: 100,
-            isActive: formData.vipPrice > 0,
-          },
-        ].filter((ticket) => ticket.isActive),
-      }
-
-      console.log("Publishing event with data:", eventData)
-      console.log("Start date (UTC):", startDateWithTime)
-      console.log("End date (UTC):", endDateWithTime)
-      console.log("Daily start:", formData.dailyStart, "Daily end:", formData.dailyEnd)
-
-      const response = await fetch(`/api/organizers/${organizerId}/events`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(eventData),
-      })
-
-      const responseData = await response.json()
-
-      if (!response.ok) {
-        throw new Error(responseData.error || "Failed to publish event")
-      }
-
-      toast({
-        title: "Success",
-        description: "Event created successfully with exhibition spaces",
-      })
-
-      // Reset form
-      setFormData({
-        title: "",
-        slug: "",
-        description: "",
-        eventType: "",
-        categories: [],
-        edition: 0,
-        startDate: "",
-        endDate: "",
-        dailyStart: "08:30",
-        dailyEnd: "18:30",
-        timezone: "Asia/Kolkata",
-        venueId: "",
-        venue: "",
-        city: "",
-        address: "",
-        currency: "₹",
-        generalPrice: 0,
-        studentPrice: 0,
-        vipPrice: 0,
-        groupPrice: 0,
-        highlights: [],
-        tags: [],
-        dressCode: "Business Casual",
-        ageLimit: "18+",
-        featured: false,
-        vip: false,
-        ticketTypes: [],
-        spaceCosts: [
-          {
-            type: "Shell Space (Standard Booth)",
-            description: "Fully constructed booth with walls, flooring, basic lighting, and standard amenities",
-            pricePerSqm: 5000,
-            minArea: 9,
-            isFixed: true,
-          },
-          {
-            type: "Raw Space",
-            description: "Open floor space without any construction or amenities",
-            pricePerSqm: 2500,
-            minArea: 20,
-            isFixed: false,
-          },
-          {
-            type: "2 Side Open Space",
-            description: "Space with two sides open for better visibility and accessibility",
-            pricePerSqm: 3500,
-            minArea: 12,
-            isFixed: true,
-          },
-          {
-            type: "3 Side Open Space",
-            description: "Premium corner space with three sides open for maximum exposure",
-            pricePerSqm: 4200,
-            minArea: 15,
-            isFixed: true,
-          },
-          {
-            type: "4 Side Open Space",
-            description: "Island space with all four sides open for 360-degree visibility",
-            pricePerSqm: 5500,
-            minArea: 25,
-            isFixed: true,
-          },
-          {
-            type: "Mezzanine Charges",
-            description: "Additional upper level space for storage or display purposes",
-            pricePerSqm: 1500,
-            minArea: 10,
-            isFixed: true,
-          },
-          {
-            type: "Additional Power",
-            description: "Extra electrical power supply for high-consumption equipment",
-            pricePerUnit: 800,
-            unit: "KW",
-            isFixed: true,
-          },
-          {
-            type: "Compressed Air",
-            description: "Compressed air supply for machinery demonstration (6 bar pressure)",
-            pricePerUnit: 1200,
-            unit: "HP",
-            isFixed: true,
-          },
-        ],
-        images: [],
-        brochure: "",
-        layoutPlan: "",
-        featuredHotels: [],
-        travelPartners: [],
-        touristAttractions: [],
-        ageRestriction: "",
-        accessibility: "",
-        parking: "",
-        publicTransport: "",
-        foodBeverage: "",
-        wifi: "",
-        photography: "",
-        recording: "",
-        liveStreaming: "",
-        socialMedia: "",
-        networking: "",
-        certificates: "",
-        materials: "",
-        followUp: "",
-      })
-      setValidationErrors({})
-    } catch (error) {
-      console.error("Error publishing event:", error)
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to publish event",
-        variant: "destructive",
-      })
-    } finally {
-      setIsPublishing(false)
-    }
+const handlePublishEvent = async () => {
+  // Check if file uploads are still in progress
+  if (isUploadingBrochure || isUploadingLayoutPlan || isUploadingImages) {
+    toast({
+      title: "Please Wait",
+      description: "File uploads are still in progress. Please wait for them to complete.",
+      variant: "destructive",
+    })
+    return
   }
+
+  // Validate all required fields
+  const newValidationErrors: ValidationErrors = {}
+
+  // Required fields validation
+  if (!formData.title.trim()) newValidationErrors.title = "Event title is required"
+  if (!formData.slug.trim()) newValidationErrors.slug = "Event slug is required"
+  if (!formData.description.trim()) newValidationErrors.description = "Event description is required"
+  if (!formData.eventType.trim()) newValidationErrors.eventType = "Please select an event type"
+  if (!formData.startDate.trim()) newValidationErrors.startDate = "Start date is required"
+  if (!formData.endDate.trim()) newValidationErrors.endDate = "End date is required"
+  if (!formData.venue.trim()) newValidationErrors.venue = "Venue is required"
+  if (!formData.city.trim()) newValidationErrors.city = "City is required"
+  if (!formData.address.trim()) newValidationErrors.address = "Address is required"
+  if (formData.tags.length === 0) newValidationErrors.tags = "Add at least one tag for better discoverability"
+
+  // Date validation
+  if (formData.startDate && formData.endDate) {
+    const start = new Date(formData.startDate)
+    const end = new Date(formData.endDate)
+    if (end < start) newValidationErrors.endDate = "End date cannot be before start date"
+    
+    // Validate that event is in the future
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    if (start < today) newValidationErrors.startDate = "Event must be in the future"
+  }
+
+  // Time validation
+  if (!formData.dailyStart.trim()) {
+    toast({
+      title: "Time Required",
+      description: "Daily start time is required",
+      variant: "destructive",
+    })
+    return
+  }
+
+  if (!formData.dailyEnd.trim()) {
+    toast({
+      title: "Time Required",
+      description: "Daily end time is required",
+      variant: "destructive",
+    })
+    return
+  }
+
+  // Set validation errors
+  setValidationErrors(newValidationErrors)
+
+  // Check if there are any validation errors
+  if (Object.keys(newValidationErrors).length > 0) {
+    toast({
+      title: "Form Incomplete",
+      description: "Please fill in all required fields correctly.",
+      variant: "destructive",
+    })
+    
+    // Scroll to first error
+    const firstErrorField = Object.keys(newValidationErrors)[0]
+    const element = document.getElementById(firstErrorField)
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+    return
+  }
+
+  // Check if at least one ticket type has price > 0
+  const hasValidTickets = formData.generalPrice > 0 || formData.studentPrice > 0 || formData.vipPrice > 0
+  if (!hasValidTickets) {
+    toast({
+      title: "Pricing Required",
+      description: "At least one ticket type must have a price greater than 0",
+      variant: "destructive",
+    })
+    return
+  }
+
+  setIsPublishing(true)
+  
+  try {
+    console.log("🚀 Starting event submission process...")
+
+    // Prepare exhibition spaces data
+    const exhibitionSpaces = formData.spaceCosts
+      .filter((cost) => cost.type.trim() !== "")
+      .map((cost) => {
+        let spaceType = "CUSTOM"
+        const spaceName = cost.type?.toLowerCase() || ""
+
+        if (spaceName.includes("shell space") || spaceName.includes("standard booth")) {
+          spaceType = "SHELL_SPACE"
+        } else if (spaceName.includes("raw space")) {
+          spaceType = "RAW_SPACE"
+        } else if (spaceName.includes("2 side open")) {
+          spaceType = "TWO_SIDE_OPEN"
+        } else if (spaceName.includes("3 side open")) {
+          spaceType = "THREE_SIDE_OPEN"
+        } else if (spaceName.includes("4 side open")) {
+          spaceType = "FOUR_SIDE_OPEN"
+        } else if (spaceName.includes("mezzanine")) {
+          spaceType = "MEZZANINE"
+        } else if (spaceName.includes("additional power")) {
+          spaceType = "ADDITIONAL_POWER"
+        } else if (spaceName.includes("compressed air")) {
+          spaceType = "COMPRESSED_AIR"
+        }
+
+        return {
+          spaceType: spaceType,
+          name: cost.type,
+          description: cost.description || "",
+          area: cost.minArea || 0,
+          dimensions: cost.minArea ? `${cost.minArea} sq.m` : "",
+          location: null,
+          basePrice: cost.pricePerSqm || cost.pricePerUnit || 0,
+          pricePerSqm: cost.pricePerSqm || null,
+          minArea: cost.minArea || null,
+          pricePerUnit: cost.pricePerUnit || null,
+          unit: cost.unit || null,
+          currency: formData.currency,
+          powerIncluded: false,
+          additionalPowerRate: cost.type.toLowerCase().includes("power") ? cost.pricePerUnit || 0 : null,
+          compressedAirRate: cost.type.toLowerCase().includes("air") ? cost.pricePerUnit || 0 : null,
+          isFixed: cost.isFixed || false,
+          isAvailable: true,
+          maxBooths: null,
+          bookedBooths: 0,
+          setupRequirements: null,
+        }
+      })
+
+    console.log("📊 Exhibition spaces prepared:", exhibitionSpaces.length)
+
+    // Convert local times to UTC for backend
+    const startDateWithTime = convertLocalToUTC(
+      formData.dailyStart,
+      getDatePart(formData.startDate),
+      formData.timezone
+    ) || formData.startDate
+
+    const endDateWithTime = convertLocalToUTC(
+      formData.dailyEnd,
+      getDatePart(formData.endDate),
+      formData.timezone
+    ) || formData.endDate
+
+    console.log("⏰ Time conversion complete:")
+    console.log("Daily start:", formData.dailyStart, "-> UTC:", startDateWithTime)
+    console.log("Daily end:", formData.dailyEnd, "-> UTC:", endDateWithTime)
+
+    // Prepare ticket types
+    const ticketTypes = [
+      {
+        name: "General",
+        description: "General admission ticket",
+        price: formData.generalPrice,
+        quantity: 1000,
+        isActive: formData.generalPrice > 0,
+      },
+      {
+        name: "Student",
+        description: "Student discount ticket",
+        price: formData.studentPrice,
+        quantity: 500,
+        isActive: formData.studentPrice > 0,
+      },
+      {
+        name: "VIP",
+        description: "VIP access ticket",
+        price: formData.vipPrice,
+        quantity: 100,
+        isActive: formData.vipPrice > 0,
+      },
+    ].filter((ticket) => ticket.isActive)
+
+    console.log("🎟️ Ticket types prepared:", ticketTypes.length)
+
+    // Prepare the complete event data
+    const eventData = {
+      title: formData.title,
+      slug: formData.slug,
+      description: formData.description,
+      shortDescription: formData.description.substring(0, 200),
+      category: formData.categories,
+      edition: formData.edition ? String(formData.edition) : null, // Convert to string
+      tags: formData.tags,
+      startDate: startDateWithTime,
+      endDate: endDateWithTime,
+      registrationStart: startDateWithTime,
+      registrationEnd: endDateWithTime,
+      timezone: formData.timezone,
+      isVirtual: false,
+      venue: formData.venueId || null,
+      venueName: formData.venue,
+      address: formData.address,
+      city: formData.city,
+      state: "",
+      country: "India",
+      currency: formData.currency,
+      images: formData.images,
+      documents: [formData.brochure, formData.layoutPlan].filter(Boolean),
+      brochure: formData.brochure || null,
+      layoutPlan: formData.layoutPlan || null,
+      bannerImage: formData.images[0] || null,
+      thumbnailImage: formData.images[0] || null,
+      isPublic: false, // Will be set to true after approval
+      requiresApproval: false,
+      allowWaitlist: false,
+      status: "PENDING_APPROVAL", // Changed from "published"
+      isFeatured: formData.featured,
+      isVIP: formData.vip,
+      exhibitionSpaces: exhibitionSpaces,
+      eventType: [formData.eventType],
+      maxAttendees: null,
+      ticketTypes: ticketTypes,
+    }
+
+    console.log("📤 Submitting event data to API...")
+    console.log("Event title:", eventData.title)
+    console.log("Organizer ID:", organizerId)
+    console.log("Status:", eventData.status)
+
+    // Submit event for approval
+    const response = await fetch(`/api/organizers/${organizerId}/events`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(eventData),
+    })
+
+    const responseData = await response.json()
+    console.log("📨 API Response:", responseData)
+
+    if (!response.ok) {
+      console.error("❌ API Error:", responseData)
+      throw new Error(responseData.error || responseData.details || "Failed to submit event for approval")
+    }
+
+    toast({
+      title: "✅ Success!",
+      description: (
+        <div className="space-y-2">
+          <p className="font-semibold">Event submitted for admin approval!</p>
+          <p className="text-sm text-gray-600">
+            Your event <span className="font-medium">"{formData.title}"</span> has been submitted.
+            You will receive a notification when your event is approved.
+            It typically takes 24-48 hours for review.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-2"
+            onClick={() => window.location.href = `/organizer/${organizerId}/events`}
+          >
+            View My Events
+          </Button>
+        </div>
+      ),
+      variant: "default",
+      duration: 10000,
+    })
+
+    console.log("🎉 Event submitted successfully!")
+
+    // Reset form after successful submission
+    setFormData({
+      title: "",
+      slug: "",
+      description: "",
+      eventType: "",
+      categories: [],
+      edition: 0,
+      startDate: "",
+      endDate: "",
+      dailyStart: "08:30",
+      dailyEnd: "18:30",
+      timezone: "Asia/Kolkata",
+      venueId: "",
+      venue: "",
+      city: "",
+      address: "",
+      currency: "₹",
+      generalPrice: 0,
+      studentPrice: 0,
+      vipPrice: 0,
+      groupPrice: 0,
+      highlights: [],
+      tags: [],
+      dressCode: "Business Casual",
+      ageLimit: "18+",
+      featured: false,
+      vip: false,
+      ticketTypes: [],
+      spaceCosts: [
+        {
+          type: "Shell Space (Standard Booth)",
+          description: "Fully constructed booth with walls, flooring, basic lighting, and standard amenities",
+          pricePerSqm: 5000,
+          minArea: 9,
+          isFixed: true,
+        },
+        {
+          type: "Raw Space",
+          description: "Open floor space without any construction or amenities",
+          pricePerSqm: 2500,
+          minArea: 20,
+          isFixed: false,
+        },
+        {
+          type: "2 Side Open Space",
+          description: "Space with two sides open for better visibility and accessibility",
+          pricePerSqm: 3500,
+          minArea: 12,
+          isFixed: true,
+        },
+        {
+          type: "3 Side Open Space",
+          description: "Premium corner space with three sides open for maximum exposure",
+          pricePerSqm: 4200,
+          minArea: 15,
+          isFixed: true,
+        },
+        {
+          type: "4 Side Open Space",
+          description: "Island space with all four sides open for 360-degree visibility",
+          pricePerSqm: 5500,
+          minArea: 25,
+          isFixed: true,
+        },
+        {
+          type: "Mezzanine Charges",
+          description: "Additional upper level space for storage or display purposes",
+          pricePerSqm: 1500,
+          minArea: 10,
+          isFixed: true,
+        },
+        {
+          type: "Additional Power",
+          description: "Extra electrical power supply for high-consumption equipment",
+          pricePerUnit: 800,
+          unit: "KW",
+          isFixed: true,
+        },
+        {
+          type: "Compressed Air",
+          description: "Compressed air supply for machinery demonstration (6 bar pressure)",
+          pricePerUnit: 1200,
+          unit: "HP",
+          isFixed: true,
+        },
+      ],
+      images: [],
+      brochure: "",
+      layoutPlan: "",
+      featuredHotels: [],
+      travelPartners: [],
+      touristAttractions: [],
+      ageRestriction: "",
+      accessibility: "",
+      parking: "",
+      publicTransport: "",
+      foodBeverage: "",
+      wifi: "",
+      photography: "",
+      recording: "",
+      liveStreaming: "",
+      socialMedia: "",
+      networking: "",
+      certificates: "",
+      materials: "",
+      followUp: "",
+    })
+    
+    setValidationErrors({})
+    setSelectedVenueId("")
+    
+    // Reset form completion
+    setCompletionPercentage(0)
+    
+    // Reset to first tab
+    setActiveTab("basic")
+    
+    console.log("🔄 Form reset complete")
+
+  } catch (error: any) {
+    console.error("❌ Error submitting event:", error)
+    
+    // Handle specific error cases
+    let errorMessage = error.message || "Failed to submit event. Please try again."
+    let errorTitle = "Submission Failed"
+
+    if (error.message.includes("slug")) {
+      errorTitle = "Slug Conflict"
+      errorMessage = "An event with this slug already exists. Please choose a different slug."
+    } else if (error.message.includes("venue")) {
+      errorTitle = "Venue Error"
+      errorMessage = "The selected venue is not available. Please choose another venue."
+    } else if (error.message.includes("validation")) {
+      errorTitle = "Validation Error"
+      errorMessage = "Please check all required fields and try again."
+    } else if (error.message.includes("P2002")) {
+      errorTitle = "Duplicate Entry"
+      errorMessage = "An event with this title or slug already exists."
+    } else if (error.message.includes("network")) {
+      errorTitle = "Network Error"
+      errorMessage = "Unable to connect to the server. Please check your internet connection."
+    }
+
+    toast({
+      title: errorTitle,
+      description: errorMessage,
+      variant: "destructive",
+    })
+  } finally {
+    setIsPublishing(false)
+  }
+}
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
@@ -1180,10 +1312,23 @@ export default function CreateEvent({ organizerId }: { organizerId: string }) {
           <p className="text-gray-600">Fill in the details to create your event</p>
         </div>
         <div className="flex gap-3">
-          <Button onClick={handlePublishEvent} disabled={isPublishing || completionPercentage < 80}>
-            <Send className="w-4 h-4 mr-2" />
-            {isPublishing ? "Publishing..." : "Publish Event"}
-          </Button>
+<Button 
+  onClick={handlePublishEvent} 
+  disabled={isPublishing || completionPercentage < 80}
+  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+>
+  {isPublishing ? (
+    <>
+      <Loader2 className="w-4 h-4 animate-spin" />
+      Submitting for Approval...
+    </>
+  ) : (
+    <>
+      <Send className="w-4 h-4" />
+      Submit for Approval
+    </>
+  )}
+</Button>
         </div>
       </div>
 

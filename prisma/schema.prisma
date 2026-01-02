@@ -36,6 +36,7 @@ model SuperAdmin {
   subAdmins     SubAdmin[]
   adminSessions AdminSession[]
   adminLogs     AdminLog[]
+  rejectedEvents Event[] @relation("RejectedEvents") // ADD THIS LINE
 
   @@map("super_admins")
 }
@@ -371,6 +372,12 @@ model Event {
   averageRating Float @default(0)
   totalReviews  Int   @default(0)
 
+  // REJECTION FIELDS - ADD THESE
+  rejectionReason String?        // Reason for rejection
+  rejectedAt      DateTime?      // When it was rejected
+  rejectedById    String?        @db.ObjectId  // Admin who rejected it
+  rejectedBy      SuperAdmin?    @relation("RejectedEvents", fields: [rejectedById], references: [id])
+
   // Relationships
   registrations    EventRegistration[]
   speakerSessions  SpeakerSession[]
@@ -394,6 +401,8 @@ model Event {
 
 enum EventStatus {
   DRAFT
+  PENDING_APPROVAL
+  REJECTED
   PUBLISHED
   CANCELLED
   COMPLETED
@@ -869,7 +878,7 @@ model Message {
 model Notification {
   id     String @id @default(auto()) @map("_id") @db.ObjectId
   userId String @db.ObjectId
-  user   User   @relation(fields: [userId], references: [id])
+  user   User?   @relation(fields: [userId], references: [id])
 
   type    NotificationType
   title   String
@@ -884,12 +893,20 @@ model Notification {
 
   metadata Json?
 
+  // Add this field for role-based notifications
+  userRole String[] @default([])
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@index([type])
   @@map("notifications")
 }
 
+// Update the NotificationType enum to include more types
 enum NotificationType {
   EVENT_REMINDER
   REGISTRATION_CONFIRMATION
@@ -904,6 +921,14 @@ enum NotificationType {
   APPOINTMENT_CONFIRMED
   APPOINTMENT_CANCELLED
   APPOINTMENT_REMINDER
+  EVENT_APPROVED
+  EVENT_REJECTED
+  EVENT_PENDING
+  EVENT_CREATED
+  NEW_USER_REGISTERED
+  TICKET_SOLD
+  REVIEW_RECEIVED
+  LEAD_RECEIVED
 }
 
 enum NotificationChannel {

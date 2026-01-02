@@ -85,6 +85,7 @@ import SettingsBackupPage from "./settings/backup"
 import BannersPage from "./content/banners"
 import PromotionPackagesPage from "./financial/packeges/page"
 import PromotionPackagesPagee from "./financial/packeges/page"
+import EventApprovalDashboard from "./EventApprovalDashboard"
 
 interface AdminDashboardProps {
   userRole: "SUPER_ADMIN" | "SUB_ADMIN"
@@ -224,7 +225,7 @@ export default function AdminDashboard({ userRole, userPermissions }: AdminDashb
         { title: "All Events", id: "events-all" },
         { title: "Create New Event", id: "events-create" },
         { title: "Event Categories", id: "events-categories" },
-        // { title: "Event Approvals", id: "events-approvals" }, 
+        { title: "Event Approvals", id: "events-approvals" }, 
         { title: "Bulk Data", id: "bulk-data" },
       ],
     },
@@ -478,6 +479,8 @@ export default function AdminDashboard({ userRole, userPermissions }: AdminDashb
           return <VenueBookingsPage />
         case "venues-feedback":
           return <VenueFeedbackPage />
+        case "events-approvals":
+  return <EventApprovalDashboard />
 
         // Visitors
         case "visitors-events":

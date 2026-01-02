@@ -1,321 +1,209 @@
-import { type NextRequest, NextResponse } from "next/server"
+// app/api/events/route.ts
+import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { authOptions } from "@/lib/auth-options"
-import { getServerSession } from "next-auth/next"
 
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
-    const includePrivate = searchParams.get("includePrivate") === "true"
-    const featuredOnly = searchParams.get("featured") === "true"
-    const vipOnly = searchParams.get("vip") === "true"
-    const statsOnly = searchParams.get("stats") === "true"
-    const groupBy = searchParams.get("group")
+    const page = parseInt(searchParams.get("page") || "1")
+    const limit = parseInt(searchParams.get("limit") || "12")
+    const category = searchParams.get("category")
+    const search = searchParams.get("search") || ""
+    const location = searchParams.get("location")
+    const startDate = searchParams.get("startDate")
+    const endDate = searchParams.get("endDate")
+    const featured = searchParams.get("featured")
+    const sort = searchParams.get("sort") || "newest"
+    
+    const skip = (page - 1) * limit
 
-    // ✅ Handle country statistics request
-    if (statsOnly && groupBy === "country") {
-      const eventsWithVenues = await prisma.event.findMany({
-        where: { 
-          isPublic: true,
-          venueId: { not: null }
-        },
-        include: {
-          venue: {
-            select: {
-              venueCountry: true
-            }
-          }
-        }
-      })
-
-      // Count events by country
-      const countryCounts: Record<string, number> = {}
-      
-      eventsWithVenues.forEach(event => {
-        if (event.venue?.venueCountry) {
-          const country = event.venue.venueCountry.trim()
-          if (country) {
-            countryCounts[country] = (countryCounts[country] || 0) + 1
-          }
-        }
-      })
-
-      // Convert to array format for frontend
-      const countries = Object.entries(countryCounts).map(([country, count]) => ({
-        country,
-        count
-      }))
-
-      return NextResponse.json({ countries }, { status: 200 })
+    // Build where clause - ONLY PUBLISHED EVENTS
+    const where: any = {
+      status: "PUBLISHED",
+      isPublic: true,
     }
 
-    // ✅ Handle city statistics request
-    if (statsOnly && groupBy === "city") {
-      const eventsWithVenues = await prisma.event.findMany({
-        where: { 
-          isPublic: true,
-          venueId: { not: null }
-        },
-        include: {
-          venue: {
-            select: {
-              venueName: true, // Add venueName to the select
-              venueCity: true,
-              venueState: true,
-              venueCountry: true
-            }
-          }
-        }
-      })
-
-      // Count events by city/state
-      const cityCounts: Record<string, number> = {}
-      
-      eventsWithVenues.forEach(event => {
-        if (event.venue) {
-          // Use venueCity first, then venueState
-          let location = event.venue.venueCity || event.venue.venueState
-          
-          // If no city/state, try to extract from venueName
-          if (!location && event.venue.venueName) {
-            // Simple extraction - you might want to improve this logic
-            const name = event.venue.venueName.toLowerCase()
-            if (name.includes('london')) location = 'London'
-            else if (name.includes('dubai')) location = 'Dubai'
-            else if (name.includes('berlin')) location = 'Berlin'
-            else if (name.includes('amsterdam')) location = 'Amsterdam'
-            else if (name.includes('paris')) location = 'Paris'
-            else if (name.includes('washington')) location = 'Washington DC'
-            else if (name.includes('new york')) location = 'New York'
-            else if (name.includes('barcelona')) location = 'Barcelona'
-            else if (name.includes('kuala')) location = 'Kuala Lumpur'
-            else if (name.includes('orlando')) location = 'Orlando'
-            else if (name.includes('chicago')) location = 'Chicago'
-            else if (name.includes('munich')) location = 'Munich'
-            else if (name.includes('chennai')) location = 'Chennai'
-            else if (name.includes('mumbai')) location = 'Mumbai'
-          }
-
-          if (location && location.trim()) {
-            const locationName = location.trim()
-            cityCounts[locationName] = (cityCounts[locationName] || 0) + 1
-          }
-        }
-      })
-
-      // Convert to array format for frontend
-      const cities = Object.entries(cityCounts).map(([city, count]) => ({
-        city,
-        count
-      }))
-
-      return NextResponse.json({ cities }, { status: 200 })
+    if (category) {
+      where.category = { has: category }
     }
 
-    // ✅ Handle category statistics request
-    if (statsOnly) {
-      const allEvents = await prisma.event.findMany({
-        where: { isPublic: true },
-        select: { category: true }
-      })
-
-      // Flatten all categories and count occurrences
-      const categoryCounts: Record<string, number> = {}
-      
-      allEvents.forEach(event => {
-        if (event.category && Array.isArray(event.category)) {
-          event.category.forEach(cat => {
-            if (cat && typeof cat === 'string') {
-              // Handle both array categories and comma-separated strings
-              if (cat.includes(',')) {
-                // Split comma-separated categories
-                cat.split(',').forEach(singleCat => {
-                  const categoryName = singleCat.trim()
-                  if (categoryName) {
-                    categoryCounts[categoryName] = (categoryCounts[categoryName] || 0) + 1
-                  }
-                })
-              } else {
-                const categoryName = cat.trim()
-                categoryCounts[categoryName] = (categoryCounts[categoryName] || 0) + 1
-              }
-            }
-          })
-        }
-      })
-
-      // Convert to array format for frontend
-      const categories = Object.entries(categoryCounts).map(([category, count]) => ({
-        category,
-        count
-      }))
-
-      return NextResponse.json({ categories }, { status: 200 })
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: "insensitive" } },
+        { description: { contains: search, mode: "insensitive" } },
+        { shortDescription: { contains: search, mode: "insensitive" } },
+        { tags: { has: search } }
+      ]
     }
 
-    // Check if requesting private data
-    if (includePrivate) {
-      const session = await getServerSession(authOptions)
-
-      if (!session) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (location) {
+      where.venue = {
+        OR: [
+          { venueCity: { contains: location, mode: "insensitive" } },
+          { venueState: { contains: location, mode: "insensitive" } },
+          { venueCountry: { contains: location, mode: "insensitive" } }
+        ]
       }
+    }
 
-      // Build where clause for private events
-      const privateWhereClause = {
-        OR: [{ organizerId: session.user?.id }, { isPublic: true }],
-        ...(featuredOnly && { isFeatured: true }),
-        ...(vipOnly && { isVIP: true }),
-      }
+    if (startDate) {
+      where.startDate = { gte: new Date(startDate) }
+    }
 
-      // Get all events for authenticated users (organizers can see their own events)
-      const events = await prisma.event.findMany({
-        where: privateWhereClause,
+    if (endDate) {
+      where.endDate = { lte: new Date(endDate) }
+    }
+
+    if (featured === "true") {
+      where.isFeatured = true
+    }
+
+    // Build orderBy clause
+    let orderBy: any = {}
+    switch (sort) {
+      case "newest":
+        orderBy = { createdAt: "desc" }
+        break
+      case "oldest":
+        orderBy = { createdAt: "asc" }
+        break
+      case "soonest":
+        orderBy = { startDate: "asc" }
+        break
+      case "popular":
+        orderBy = { currentAttendees: "desc" }
+        break
+      case "featured":
+        orderBy = [{ isFeatured: "desc" }, { createdAt: "desc" }]
+        break
+      default:
+        orderBy = { createdAt: "desc" }
+    }
+
+    // Get events with pagination
+    const [events, total] = await Promise.all([
+      prisma.event.findMany({
+        where,
         include: {
-          exhibitionSpaces: true,
           organizer: {
             select: {
               id: true,
               firstName: true,
+              lastName: true,
               email: true,
-              company: true,
               avatar: true,
-            },
+            }
           },
-          venue: true,
-          registrations: {
+          venue: {
             select: {
               id: true,
-              status: true,
-              registeredAt: true,
-              user: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  email: true,
-                },
-              },
+              venueName: true,
+              venueCity: true,
+              venueState: true,
+              venueCountry: true,
+              venueAddress: true,
+            }
+          },
+          ticketTypes: {
+            where: { isActive: true },
+            select: {
+              id: true,
+              name: true,
+              price: true,
+              quantity: true,
             },
+            orderBy: { price: "asc" },
+            take: 1
           },
           _count: {
             select: {
-              registrations: true,
-            },
+              registrations: {
+                where: { status: "CONFIRMED" }
+              },
+              reviews: true
+            }
           },
+          reviews: {
+            select: {
+              rating: true
+            }
+          }
         },
-        orderBy: {
-          startDate: "asc",
-        },
-      })
+        orderBy,
+        skip,
+        take: limit,
+      }),
+      prisma.event.count({ where })
+    ])
 
-      return NextResponse.json({ events }, { status: 200 })
-    }
+    // Transform events
+    const transformedEvents = events.map(event => {
+      const avgRating = event.reviews.length > 0
+        ? event.reviews.reduce((sum, review) => sum + review.rating, 0) / event.reviews.length
+        : 0
 
-    // Build where clause for public events
-    const publicWhereClause = {
-      isPublic: true,
-      ...(featuredOnly && { isFeatured: true }),
-      ...(vipOnly && { isVIP: true }),
-    }
+      const cheapestTicket = event.ticketTypes[0]?.price || 0
 
-    // Public events data (no authentication required)
-    const events = await prisma.event.findMany({
-      where: publicWhereClause,
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        description: true,
-        shortDescription: true,
-        status: true,
-        category: true,
-        tags: true,
-        eventType: true,
-        isFeatured: true,  
-        isVIP: true,       
-        startDate: true,
-        endDate: true,
-        registrationStart: true,
-        registrationEnd: true,
-        timezone: true,
-        isVirtual: true,
-        virtualLink: true,
-        maxAttendees: true,
-        currentAttendees: true,
-        ticketTypes: true,
-        currency: true,
-        images: true,
-        videos: true,
-        leads: true,
-        documents: true,
-        bannerImage: true,
-        thumbnailImage: true,
-        isPublic: true,
-        requiresApproval: true,
-        allowWaitlist: true,
-        refundPolicy: true,
-        metaTitle: true,
-        metaDescription: true,
-        organizerId: true,
-        createdAt: true,
-        updatedAt: true,
-        averageRating: true,
-        totalReviews: true,
-        exhibitionSpaces: {
-          select: {
-            id: true,
-            name: true,
-            description: true,
-            basePrice: true,
-            pricePerSqm: true,
-            minArea: true,
-            isFixed: true,
-            unit: true,
-          },
-        },
+      return {
+        id: event.id,
+        title: event.title,
+        description: event.description,
+        shortDescription: event.shortDescription,
+        slug: event.slug,
+        startDate: event.startDate.toISOString(),
+        endDate: event.endDate.toISOString(),
+        timezone: event.timezone,
+        location: event.venue?.venueName || "Virtual Event",
+        city: event.venue?.venueCity || "",
+        state: event.venue?.venueState || "",
+        country: event.venue?.venueCountry || "",
+        address: event.venue?.venueAddress || "",
+        isVirtual: event.isVirtual,
+        virtualLink: event.virtualLink,
+        status: event.status,
+        category: event.category || [],
+        tags: event.tags || [],
+        eventType: event.eventType || [],
+        isFeatured: event.isFeatured,
+        isVIP: event.isVIP,
+        attendees: event._count.registrations,
+        totalReviews: event._count.reviews,
+        averageRating: avgRating,
+        cheapestTicket,
+        currency: event.currency,
+        images: event.images,
+        bannerImage: event.bannerImage,
+        thumbnailImage: event.thumbnailImage,
         organizer: {
-          select: {
-            id: true,
-            firstName: true,
-            avatar: true,
-            company: true,
-          },
+          id: event.organizer.id,
+          name: `${event.organizer.firstName} ${event.organizer.lastName}`.trim(),
+          email: event.organizer.email,
+          avatar: event.organizer.avatar,
         },
-        venue: {
-          select: {
-            id: true,
-            venueName: true,
-            venueAddress: true,
-            venueCity: true,
-            venueState: true,
-            venueCountry: true,
-            venueZipCode: true,
-            maxCapacity: true,
-            totalHalls: true,
-          },
-        },
-        _count: {
-          select: {
-            registrations: true,
-          },
-        },
-      },
-      orderBy: {
-        startDate: "asc",
-      },
+        createdAt: event.createdAt.toISOString(),
+        updatedAt: event.updatedAt.toISOString(),
+      }
     })
 
-    // Add computed fields for public view
-    const eventsWithComputedFields = events.map((event) => ({
-      ...event,
-      spotsRemaining: event.maxAttendees ? event.maxAttendees - event._count.registrations : null,
-      isRegistrationOpen:
-        new Date() >= new Date(event.registrationStart) && new Date() <= new Date(event.registrationEnd),
-    }))
+    return NextResponse.json({
+      success: true,
+      events: transformedEvents,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNextPage: page * limit < total,
+        hasPreviousPage: page > 1,
+      }
+    })
 
-    return NextResponse.json({ events: eventsWithComputedFields }, { status: 200 })
-  } catch (error) {
-    console.error("Error in events API:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  } catch (error: any) {
+    console.error("Error fetching events:", error)
+    return NextResponse.json({
+      success: false,
+      error: "Failed to fetch events",
+      details: error.message
+    }, { status: 500 })
   }
 }

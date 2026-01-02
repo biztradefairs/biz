@@ -48,6 +48,7 @@ interface Event {
     venueAddress?: string
     venueCity?: string
     venueCountry?: string
+    venueName?: string
   }
   pricing: {
     general: number
@@ -152,74 +153,131 @@ export default function EventsPageContent() {
     return DEFAULT_EVENT_IMAGE
   }
 
-  const fetchEvents = async () => {
-    try {
-      setLoading(true)
-      setError(null)
+const fetchEvents = async () => {
+  try {
+    setLoading(true)
+    setError(null)
 
-      const response = await fetch("/api/events")
+    const response = await fetch("/api/events")
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch events")
+    if (!response.ok) {
+      throw new Error("Failed to fetch events")
+    }
+
+    const data: ApiResponse = await response.json()
+
+    const transformedEvents = data.events.map((event: any) => {
+      const resolvedId =
+        event.id ||
+        event._id ||
+        (typeof event._id === "object" && event._id.$oid) ||
+        (typeof event._id === "string" ? event._id : undefined)
+
+      const avg =
+        typeof event?.averageRating === "number" && event.averageRating > 0
+          ? event.averageRating
+          : typeof event?.rating?.average === "number"
+            ? event.rating.average
+            : 4.5
+
+      const categories = Array.isArray(event.category)
+        ? event.category
+        : Array.isArray(event.categories)
+          ? event.categories
+          : []
+
+      // FIXED: Better location extraction
+      let address = "Address not available"
+      let city = "City not specified"
+      let venue = "Venue not specified"
+      let country = "Country not specified"
+
+      // Try to get location from multiple possible sources
+      if (event.venue?.venueAddress) {
+        address = event.venue.venueAddress
+      } else if (event.location?.address) {
+        address = event.location.address
+      } else if (event.address) {
+        address = event.address
       }
 
-      const data: ApiResponse = await response.json()
+      if (event.venue?.venueCity) {
+        city = event.venue.venueCity
+      } else if (event.location?.city) {
+        city = event.location.city
+      } else if (event.city) {
+        city = event.city
+      }
 
-      const transformedEvents = data.events.map((event: any) => {
-        const resolvedId =
-          event.id ||
-          event._id ||
-          (typeof event._id === "object" && event._id.$oid) ||
-          (typeof event._id === "string" ? event._id : undefined)
+      if (event.venue?.venueName) {
+        venue = event.venue.venueName
+      } else if (event.location?.venue) {
+        venue = event.location.venue
+      } else if (event.venue) {
+        venue = typeof event.venue === 'string' ? event.venue : 'Venue'
+      }
 
-        const avg =
-          typeof event?.averageRating === "number" && event.averageRating > 0
-            ? event.averageRating
-            : typeof event?.rating?.average === "number"
-              ? event.rating.average
-              : 4.5
+      if (event.venue?.venueCountry) {
+        country = event.venue.venueCountry
+      } else if (event.location?.country) {
+        country = event.location.country
+      } else if (event.country) {
+        country = event.country
+      }
 
-        const categories = Array.isArray(event.category)
-          ? event.category
-          : Array.isArray(event.categories)
-            ? event.categories
-            : []
+      return {
+        ...event,
+        id: String(resolvedId || ""),
+        eventType: event.eventType || categories?.[0] || "Other",
+        timings: {
+          startDate: event.startDate,
+          endDate: event.endDate,
+        },
+        // FIXED: Proper location object
+        location: {
+          address: address,
+          city: city,
+          venue: venue,
+          country: country,
+        },
+        // Keep original venue data if available
+        venue: event.venue || {
+          venueAddress: address,
+          venueCity: city,
+          venueCountry: country,
+        },
+        featured: event.tags?.includes("featured") || false,
+        categories: categories,
+        tags: event.tags || [],
+        images: event.images || ["/images/gpex.jpg"],
+        pricing: event.pricing || { general: 0 },
+        rating: { average: avg },
+        totalReviews: typeof event?.totalReviews === "number" ? event.totalReviews : undefined,
+      }
+    })
 
-        return {
-          ...event,
-          id: String(resolvedId || ""),
-          eventType: event.eventType || categories?.[0] || "Other",
-          timings: {
-            startDate: event.startDate,
-            endDate: event.endDate,
-          },
-          location: {
-            address: event.venue?.venueAddress || "Not Added",
-          },
-          featured: event.tags?.includes("featured") || false,
-          categories: categories,
-          tags: event.tags || [],
-          images: event.images || ["/images/gpex.jpg"],
-          pricing: event.pricing || { general: 0 },
-          rating: { average: avg },
-          totalReviews: typeof event?.totalReviews === "number" ? event.totalReviews : undefined,
-        }
-      })
-
-      setEvents(transformedEvents)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred")
-      console.error("[v0] Error fetching events:", err)
-      toast({
-        title: "Error",
-        description: "Failed to load events",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-    }
+    setEvents(transformedEvents)
+    
+    // Debug log to check location data
+    console.log("Transformed events with locations:", transformedEvents.map(e => ({
+      id: e.id,
+      title: e.title,
+      location: e.location,
+      venue: e.venue
+    })))
+    
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "An error occurred")
+    console.error("[v0] Error fetching events:", err)
+    toast({
+      title: "Error",
+      description: "Failed to load events",
+      variant: "destructive",
+    })
+  } finally {
+    setLoading(false)
   }
-
+}
   useEffect(() => {
     fetchEvents()
   }, [])
@@ -1284,12 +1342,12 @@ export default function EventsPageContent() {
                                     {event.title}
                                   </h3>
                                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-3">
-                                    <div className="flex items-center text-gray-700">
-                                      <MapPin className="w-4 h-4 mr-2 flex-shrink-0 text-blue-600" />
-                                      <span className="text-xs sm:text-sm font-medium truncate">
-                                        {event.location?.address || "Address not available"}
-                                      </span>
-                                    </div>
+                                  <div className="flex items-center text-gray-700">
+  <MapPin className="w-4 h-4 mr-2 flex-shrink-0 text-blue-600" />
+  <span className="text-xs sm:text-sm font-medium truncate">
+    {event.location?.city || event.venue?.venueCity || event.location?.address || "Location not specified"}
+  </span>
+</div>
                                     <div className="flex items-center text-gray-700">
                                       <Calendar className="w-4 h-4 mr-2 flex-shrink-0 text-blue-600" />
                                       <span className="text-xs sm:text-sm font-medium">{formatDate(event.timings.startDate)}</span>

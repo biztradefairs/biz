@@ -84,7 +84,6 @@ export default function EventsPageContent() {
   const categoryFromUrl = searchParams.get("category")
   const [selectedCategory, setSelectedCategory] = useState(categoryFromUrl || "All Events")
 
-
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -392,7 +391,6 @@ export default function EventsPageContent() {
       "Wellness, Health & Fitness",
     ]
 
-
     return hardcodedCategories
       .map((categoryName) => {
         const count = events.filter((event) => {
@@ -618,7 +616,6 @@ export default function EventsPageContent() {
         ),
       )
     } else if (selectedCategory && selectedCategory !== "All Events") {
-
       filtered = filtered.filter((event) =>
         event.categories?.some((cat) => cat.toLowerCase().trim() === selectedCategory.toLowerCase().trim()),
       )
@@ -751,8 +748,49 @@ export default function EventsPageContent() {
       day: "2-digit",
       month: "short",
     })
-
   }
+  
+  // FIXED: Properly calculate hasActiveFilters
+  const hasActiveFilters = useMemo(() => {
+    const hasSearchQuery = searchQuery.trim().length > 0
+    const hasSelectedDate = selectedDate !== null
+    const hasSelectedDateRange = selectedDateRange.trim().length > 0
+    const hasSelectedLocation = selectedLocation.trim().length > 0
+    const hasSelectedFormat = selectedFormat !== "All Formats"
+    const hasSelectedCategory = selectedCategory !== "All Events" && selectedCategory.trim().length > 0
+    const hasSelectedCategories = selectedCategories.length > 0
+    const hasSelectedRelatedTopics = selectedRelatedTopics.length > 0
+    const hasPriceRange = priceRange.trim().length > 0
+    const hasRating = rating.trim().length > 0
+    const hasActiveTab = activeTab !== "All Events"
+
+    return (
+      hasSearchQuery ||
+      hasSelectedDate ||
+      hasSelectedDateRange ||
+      hasSelectedLocation ||
+      hasSelectedFormat ||
+      hasSelectedCategory ||
+      hasSelectedCategories ||
+      hasSelectedRelatedTopics ||
+      hasPriceRange ||
+      hasRating ||
+      hasActiveTab
+    )
+  }, [
+    searchQuery,
+    selectedDate,
+    selectedDateRange,
+    selectedLocation,
+    selectedFormat,
+    selectedCategory,
+    selectedCategories,
+    selectedRelatedTopics,
+    priceRange,
+    rating,
+    activeTab
+  ])
+
   const formatYear = (date: string) =>
     new Date(date).getFullYear()
 
@@ -777,7 +815,7 @@ export default function EventsPageContent() {
 
   const clearAllFilters = () => {
     setSearchQuery("")
-    setSelectedCategory("")
+    setSelectedCategory("All Events")
     setSelectedCategories([])
     setSelectedRelatedTopics([])
     setSelectedLocation("")
@@ -897,7 +935,7 @@ export default function EventsPageContent() {
             ))}
           </div>
 
-          {/* Active Filters */}
+          {/* Active Filters - ALWAYS SHOW CLEAR ALL BUTTON IF ANY FILTER IS ACTIVE */}
           <div className="flex flex-wrap gap-2 mb-6">
             {selectedDate && (
               <Badge variant="secondary" className="flex items-center gap-1 px-3 py-1 text-xs sm:text-sm font-medium">
@@ -917,14 +955,28 @@ export default function EventsPageContent() {
                 <X className="w-3 h-3 sm:w-4 sm:h-4 cursor-pointer ml-1" onClick={clearFormatFilter} />
               </Badge>
             )}
-            {(selectedDate || selectedLocation || selectedFormat !== "All Formats") && (
+            {selectedCategory !== "All Events" && (
+              <Badge variant="secondary" className="flex items-center gap-1 px-3 py-1 text-xs sm:text-sm font-medium">
+                <span className="font-bold">Category:</span> {selectedCategory}
+                <X className="w-3 h-3 sm:w-4 sm:h-4 cursor-pointer ml-1" onClick={() => setSelectedCategory("All Events")} />
+              </Badge>
+            )}
+            {selectedCategories.length > 0 && selectedCategories.map((category) => (
+              <Badge variant="secondary" key={category} className="flex items-center gap-1 px-3 py-1 text-xs sm:text-sm font-medium">
+                <span className="font-bold">Cat:</span> {category}
+                <X className="w-3 h-3 sm:w-4 sm:h-4 cursor-pointer ml-1" onClick={() => handleCategoryToggle(category)} />
+              </Badge>
+            ))}
+            
+            {/* ALWAYS SHOW CLEAR ALL BUTTON WHEN THERE ARE ACTIVE FILTERS */}
+            {hasActiveFilters && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={clearAllFilters}
-                className="text-xs sm:text-sm font-medium bg-transparent"
+                className="text-xs sm:text-sm font-medium bg-transparent border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
               >
-                Clear All
+                Clear All Filters
               </Button>
             )}
           </div>
@@ -1193,8 +1245,6 @@ export default function EventsPageContent() {
                   <h1 className="font-sans text-[32px] font-extrabold text-gray-600 mb-3 tracking-tight">
                     {getBannerTitle()}
                   </h1>
-
-
                   <div className="flex flex-wrap items-center justify-between gap-4">
                     {/* <div className="flex gap-3">
                       <Button className="bg-gray-900 hover:bg-black text-white px-8 py-3 rounded-lg font-black text-lg shadow-lg hover:shadow-xl transition-all duration-300">
@@ -1270,7 +1320,6 @@ export default function EventsPageContent() {
                   paginatedEvents.map((event) => (
                     <Link href={`/event/${event.id}`} key={event.id} className="block">
                       <div className="bg-white border border-gray-300 rounded-md overflow-hidden shadow hover:shadow-xl transition-all duration-300 w-full max-w-6xl mx-auto">
-
                         <CardContent className="p-0">
                           <div className="flex flex-col sm:flex-row">
                             {/* IMAGE SECTION (REDUCED SIZE) */}
@@ -1280,12 +1329,10 @@ export default function EventsPageContent() {
                                 alt={event.title}
                                 className="w-full h-full object-cover rounded-sm p-3 mt-3"
                               />
-
                             </div>
 
                             {/* CONTENT SECTION */}
                             <div className="flex-1 flex flex-col justify-between p-4 sm:p-5 relative">
-
                               {/* RIGHT SIDE BADGES (EDITION + TYPE) */}
                               <div className="absolute top-4 right-4 flex items-center gap-2 bg-white/90 backdrop-blur px-3 py-1 rounded-full shadow-lg">
                                 <img
@@ -1307,14 +1354,10 @@ export default function EventsPageContent() {
                                   {" "}{formatYear(event.timings.startDate)}
                                 </div>
 
-
-
-
                                 {/* EVENT NAME */}
                                 <h3 className="font-sans text-[19.2px] font-semibold text-[#1F5D84] mb-1 line-clamp-2">
                                   {event.title}
                                 </h3>
-
 
                                 {/* LOCATION */}
                                 <div className="font-sans text-[14px] font-semibold text-[#212529] mb-2 flex items-center">
@@ -1352,9 +1395,7 @@ export default function EventsPageContent() {
                                     {event.description}
                                   </p>
                                 )}
-
                               </div>
-
 
                               {/* DIVIDER */}
                               <div className="border-t border-gray-200 my-3" />
@@ -1364,7 +1405,6 @@ export default function EventsPageContent() {
                                 {/* LEFT ACTIONS */}
                                 <div className="flex items-center gap-3">
                                   <ShareButton id={event.id} title={event.title} type="event" />
-
                                   <BookmarkButton
                                     eventId={event.id}
                                     className="bg-gray-100 hover:bg-white px-3 py-1 rounded-md text-xs"
@@ -1394,8 +1434,6 @@ export default function EventsPageContent() {
                               </div>
                             </div>
                           </div>
-
-
                         </CardContent>
                       </div>
                     </Link>
@@ -1514,7 +1552,6 @@ export default function EventsPageContent() {
                   {events.slice(0, 3).map((event) => (
                     <Link key={event.id} href={`/event/${event.id}`} className="group block">
                       <div className="bg-gradient-to-r from-yellow-100 to-yellow-300 rounded-md p-4 flex gap-4 shadow hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-yellow-200">
-
                         {/* IMAGE */}
                         <div className="w-20 h-20 flex-shrink-0 rounded-sm overflow-hidden border border-white shadow">
                           <img
@@ -1526,7 +1563,6 @@ export default function EventsPageContent() {
 
                         {/* CONTENT */}
                         <div className="flex flex-col flex-1 min-w-0">
-
                           {/* TITLE — 19.2px system-ui */}
                           <h3 className="font-sans text-[19.2px] font-semibold text-[#1F5D84] mb-1 line-clamp-2">
                             {event.title}
@@ -1548,13 +1584,11 @@ export default function EventsPageContent() {
                             <MapPin className="w-4 h-4 mr-2 text-blue-700" />
                             {event.location?.city || "Chennai, India"}
                           </div>
-
                         </div>
                       </div>
                     </Link>
                   ))}
                 </div>
-
 
                 {/* Mobile View - Horizontal Scroll */}
                 <div className="lg:hidden">

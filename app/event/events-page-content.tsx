@@ -916,8 +916,10 @@ export default function EventsPageContent() {
 
   return (
     <div className="min-h-screen bg-gray-50" style={{ fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif" }}>
-      {/* Increased side gaps with wider container padding */}
-      <div className="w-full px-2 sm:px-4 md:px-6 lg:px-12 xl:px-16 2xl:px-24 py-6">
+      {/* MAIN CONTAINER WITH RESPONSIVE PADDING */}
+      {/* Mobile/Tablet: less gap (like laptop) */}
+      {/* Desktop (big screen): more gap */}
+      <div className="w-full px-4 sm:px-6 md:px-8 lg:px-12 xl:px-24 2xl:px-32 py-6">
         <div className="w-full py-6">
           {/* Tabs Navigation */}
           <div className="flex flex-wrap gap-1 sm:gap-2 mb-6 border-b border-gray-300 overflow-x-auto">
@@ -982,7 +984,8 @@ export default function EventsPageContent() {
           </div>
 
           {/* Main Grid Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 lg:gap-8">
+          {/* Modified gap values for better spacing */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 lg:gap-8 xl:gap-10 2xl:gap-12">
             {/* Left Sidebar - 3 columns on desktop */}
             <div className="lg:col-span-3 hidden lg:block order-2 lg:order-1">
               <div className="lg:sticky lg:top-6 self-start">

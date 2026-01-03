@@ -5,6 +5,67 @@ import { prisma } from "@/lib/prisma"
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
+    const stats = searchParams.get("stats")
+
+    // If stats=true, return category statistics
+    if (stats === "true") {
+      const ALL_CATEGORIES = [
+        "Education & Training",
+        "Medical & Pharma",
+        "IT & Technology",
+        "Banking & Finance",
+        "Business Services",
+        "Industrial Engineering",
+        "Building & Construction",
+        "Power & Energy",
+        "Entertainment & Media",
+        "Wellness, Health & Fitness",
+        "Science & Research",
+        "Environment & Waste",
+        "Agriculture & Forestry",
+        "Food & Beverages",
+        "Logistics & Transportation",
+        "Electric & Electronics",
+        "Arts & Crafts",
+        "Auto & Automotive",
+        "Home & Office",
+        "Security & Defense",
+        "Fashion & Beauty",
+        "Travel & Tourism",
+        "Telecommunication",
+        "Apparel & Clothing",
+        "Animals & Pets",
+        "Baby, Kids & Maternity",
+        "Hospitality",
+        "Packing & Packaging",
+        "Miscellaneous",
+      ]
+
+      const categoryCounts = await Promise.all(
+        ALL_CATEGORIES.map(async (category) => {
+          const count = await prisma.event.count({
+            where: {
+              status: "PUBLISHED",
+              isPublic: true,
+              category: {
+                has: category
+              }
+            }
+          })
+          return { category, count }
+        })
+      )
+
+      const filteredCounts = categoryCounts.filter(item => item.count > 0)
+
+      return NextResponse.json({
+        success: true,
+        categories: filteredCounts,
+        totalCategories: filteredCounts.length
+      })
+    }
+
+    // Original event fetching logic...
     const page = parseInt(searchParams.get("page") || "1")
     const limit = parseInt(searchParams.get("limit") || "12")
     const category = searchParams.get("category")

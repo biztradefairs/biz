@@ -16,6 +16,7 @@ export async function GET() {
         title: true,
         slug: true,
         startDate: true,
+        endDate: true,
         bannerImage: true,
         thumbnailImage: true,
         venue: {

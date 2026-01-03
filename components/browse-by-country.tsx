@@ -39,24 +39,20 @@ export default function BrowseByCountry() {
     const fetchCountryCounts = async () => {
       try {
         setLoading(true)
-        const res = await fetch("/api/events?stats=true&group=country")
+        // Add include=countries parameter to get country data
+        const res = await fetch("/api/events/stats?include=countries")
         if (!res.ok) throw new Error("Failed to fetch country stats")
         
         const data = await res.json()
-        console.log("Country API Response:", data) // Debug log
         
-        if (data.countries && Array.isArray(data.countries)) {
+        if (data.success && data.countries) {
           const map: Record<string, number> = {}
           data.countries.forEach((c: CountryCount) => {
-            // Normalize country names to match frontend list
-            const normalizedCountry = normalizeCountryName(c.country)
-            if (normalizedCountry) {
-              map[normalizedCountry] = (map[normalizedCountry] || 0) + c.count
+            if (c.country) {
+              map[c.country] = c.count
             }
           })
           setCounts(map)
-        } else {
-          console.log("No countries data found in response")
         }
       } catch (error) {
         console.error("Error fetching country stats:", error)
@@ -68,46 +64,25 @@ export default function BrowseByCountry() {
     fetchCountryCounts()
   }, [])
 
-  // Helper function to normalize country names
-  const normalizeCountryName = (countryName: string): string => {
-    if (!countryName) return ''
-    
-    const normalized = countryName.trim().toLowerCase()
-    
-    // Map database country names to frontend country names
-    const countryMap: Record<string, string> = {
-      'india': 'India',
-      'usa': 'USA',
-      'united states': 'USA',
-      'germany': 'Germany',
-      'uk': 'UK',
-      'united kingdom': 'UK',
-      'canada': 'Canada',
-      'uae': 'UAE',
-      'united arab emirates': 'UAE',
-      'australia': 'Australia',
-      'china': 'China',
-      'spain': 'Spain',
-      'italy': 'Italy',
-      'france': 'France',
-      'japan': 'Japan'
-    }
-
-    return countryMap[normalized] || countryName.charAt(0).toUpperCase() + countryName.slice(1).toLowerCase()
-  }
-
   const handleCountryClick = (country: Country) => {
     router.push(`/event?country=${encodeURIComponent(country.name)}`)
   }
 
-  // Helper function to get count for a country
   const getCountryCount = (countryName: string): number => {
     return counts[countryName] || 0
   }
 
+  const formatCount = (count: number): string => {
+    if (count >= 1000) {
+      const kValue = (count / 1000).toFixed(1)
+      return kValue.endsWith('.0') ? `${(count / 1000).toFixed(0)}k` : `${kValue}k`
+    }
+    return count.toString()
+  }
+
   if (loading) {
     return (
-      <div className="w-full max-w-6xl mx-auto mb-12">
+      <div className="w-full max-w-7xl mx-auto mb-12">
         <div className="px-6 py-6 border-b border-gray-200 text-left">
           <h2 className="text-2xl font-semibold text-gray-900 mb-1">
             Browse Event By Country
@@ -121,7 +96,7 @@ export default function BrowseByCountry() {
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto mb-12">
+    <div className="w-full max-w-7xl mx-auto mb-12">
       <div className="overflow-hidden">
         {/* Header */}
         <div className="px-6 py-6 border-b border-gray-200 text-left">
@@ -135,15 +110,12 @@ export default function BrowseByCountry() {
           <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-4">
             {countries.map((country) => {
               const eventCount = getCountryCount(country.name)
-              const formattedCount = eventCount >= 1000
-                ? `${(eventCount / 1000).toFixed(1)}k`
-                : eventCount
-
+              
               return (
                 <button
                   key={country.id}
                   onClick={() => handleCountryClick(country)}
-                  className="group bg-white shadow-sm p-4 hover:shadow-lg hover:shadow-gray-500 transition-all duration-200 hover:scale-105"
+                  className="group bg-white shadow-xl p-4 hover:shadow-lg hover:shadow-gray-500 transition-all duration-200 hover:scale-105"
                 >
                   <div className="aspect-[5/2] flex items-center justify-left">
                     <img
@@ -157,7 +129,7 @@ export default function BrowseByCountry() {
                       {country.name}
                     </p>
                     <p className="text-sm text-gray-500">
-                      {formattedCount} Events
+                      {formatCount(eventCount)} Events
                     </p>
                   </div>
                 </button>

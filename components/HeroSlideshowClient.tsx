@@ -12,7 +12,7 @@ interface Venue {
 interface Event {
   id: string
   title: string
-  slug?: string | null // ADD THIS
+  slug?: string | null
   startDate: string
   endDate?: string | null
   bannerImage?: string | null
@@ -33,32 +33,40 @@ const EventCard = ({ event }: { event: Event }) => {
     ? [event.venue.venueCity, event.venue.venueCountry].filter(Boolean).join(", ")
     : "Venue coming soon"
 
+  // Truncate location if too long
+  const truncateLocation = (text: string, maxLength: number = 28) => {
+    if (text.length <= maxLength) return text
+    return text.substring(0, maxLength) + "..."
+  }
+
   // Generate slug from title if not available
   const eventSlug = event.slug || generateSlug(event.title)
 
   return (
     <Link href={`/event/${eventSlug}`}>
-      <div className="flex-shrink-0 w-80 h-[480px] bg-[#F2F2F2] relative overflow-hidden hover:shadow-xl transition snap-start">
+      <div className="flex-shrink-0 w-full sm:w-64 md:w-72 lg:w-80 h-[400px] md:h-[440px] lg:h-[480px] bg-[#F2F2F2] relative overflow-hidden group transition-all duration-300 ease-out snap-start hover:scale-105 hover:z-10 hover:shadow-2xl">
         <img
           src={event.bannerImage || event.images?.[0] || "/herosection-images/food.jpg"}
           alt={event.title}
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-blue-950 to-transparent"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-blue-950/90 via-blue-950/40 to-transparent group-hover:from-blue-950/95 group-hover:via-blue-950/50 transition-all duration-300"></div>
 
-        <div className="absolute bottom-0 p-6">
-          <div className="bg-white rounded-sm px-4 py-2 mb-4 inline-block">
-            <div className="text-xl font-bold">
+        <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6 transform transition-transform duration-300 group-hover:-translate-y-2">
+          <div className="bg-white rounded-sm px-3 py-2 md:px-4 md:py-2 mb-3 md:mb-4 inline-block transform transition-transform duration-300 group-hover:scale-105">
+            <div className="text-lg md:text-xl font-bold">
               {endDate ? `${date}-${endDate}` : date}
             </div>
             <div className="text-xs uppercase">{month} {year}</div>
           </div>
 
-          <h3 className="text-xl font-bold text-white mb-2">{event.title}</h3>
+          <h3 className="text-lg md:text-xl font-bold text-white mb-2 line-clamp-2 min-h-[3.5rem] md:min-h-[3rem] transform transition-transform duration-300 group-hover:translate-y-1">
+            {event.title}
+          </h3>
 
-          <div className="flex items-center text-white/80 text-sm">
-            <MapPin className="w-4 h-4 mr-1" />
-            {location}
+          <div className="flex items-center text-white/80 text-sm truncate transform transition-transform duration-300 group-hover:translate-y-1">
+            <MapPin className="w-4 h-4 mr-1 flex-shrink-0" />
+            <span className="truncate">{truncateLocation(location)}</span>
           </div>
         </div>
       </div>
@@ -75,7 +83,7 @@ function generateSlug(title: string): string {
     .replace(/[^\w\-]+/g, '')
     .replace(/\-\-+/g, '-')
     .replace(/^-+/, '')
-    .replace(/-+$/, '');
+    .replace(/-+$/, '')
 }
 
 export default function HeroSlideshowClient({

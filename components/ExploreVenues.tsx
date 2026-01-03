@@ -78,7 +78,7 @@ export default function ExploreVenues() {
   const currentVenues = organizers.slice(startIdx, endIdx)
 
   return (
-    <div className="w-full max-w-6xl mx-auto mb-12">
+    <div className="w-full max-w-7xl mx-auto mb-12">
       <div>
         {/* Header with navigation buttons */}
         <div className="px-6 py-6 border-b border-gray-200 flex justify-between items-center">

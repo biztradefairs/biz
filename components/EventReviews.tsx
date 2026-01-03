@@ -195,7 +195,7 @@ export default function EventReviews() {
   }
 
   return (
-    <section className="py-12 px-4 max-w-6xl mx-auto">
+    <section className="py-12 px-4 max-w-7xl mx-auto">
       {/* Heading */}
       <div className="text-center mb-10">
         <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">

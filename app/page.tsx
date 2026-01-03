@@ -28,12 +28,12 @@ export default function Home() {
     <div className="bg-white min-h-screen">
        <HeroSlideshow />
        <CategoryBrowse />
-        <div className="px-6 py-6 border-b border-gray-200 max-w-6xl mx-auto">
+        <div className="px-6 py-6 border-b border-gray-200 max-w-7xl mx-auto">
         <PageBanner page="homepage" height={150} autoplay={true} autoplayInterval={5000} showControls={true} />
       </div>
        <FeaturedEvents />                               
        <BrowseEventsByCity />
-         <div className="px-6 py-6 border-b border-gray-200 max-w-6xl mx-auto">
+         <div className="px-6 py-6 border-b border-gray-200 max-w-7xl mx-auto">
          <PageBanner page="events" height={150} autoplay={true} autoplayInterval={5000} showControls={true} className="my-8" />
           
       </div>

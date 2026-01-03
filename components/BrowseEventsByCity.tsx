@@ -33,24 +33,20 @@ export default function BrowseByCity() {
     const fetchCityCounts = async () => {
       try {
         setLoading(true)
-        const res = await fetch("/api/events?stats=true&group=city")
+        // Add include=cities parameter to get city data
+        const res = await fetch("/api/events/stats?include=cities")
         if (!res.ok) throw new Error("Failed to fetch city stats")
         
         const data = await res.json()
-        console.log("City API Response:", data) // Debug log
         
-        if (data.cities && Array.isArray(data.cities)) {
+        if (data.success && data.cities) {
           const map: Record<string, number> = {}
           data.cities.forEach((c: CityCount) => {
-            // Normalize city names to match frontend list
-            const normalizedCity = normalizeCityName(c.city)
-            if (normalizedCity) {
-              map[normalizedCity] = (map[normalizedCity] || 0) + c.count
+            if (c.city) {
+              map[c.city] = c.count
             }
           })
           setCounts(map)
-        } else {
-          console.log("No cities data found in response")
         }
       } catch (error) {
         console.error("Error fetching city stats:", error)
@@ -62,103 +58,98 @@ export default function BrowseByCity() {
     fetchCityCounts()
   }, [])
 
-  // Helper function to normalize city names
-  const normalizeCityName = (cityName: string): string => {
-    if (!cityName) return ''
-    
-    const normalized = cityName.trim().toLowerCase()
-    
-    // Map database city names to frontend city names
-    const cityMap: Record<string, string> = {
-      'chennai': 'Chennai',
-      'mumbai': 'Mumbai',
-      'london': 'London',
-      'dubai': 'Dubai',
-      'berlin': 'Berlin',
-      'amsterdam': 'Amsterdam',
-      'paris': 'Paris',
-      'washington dc': 'Washington DC',
-      'washington': 'Washington DC',
-      'new york': 'New York',
-      'barcelona': 'Barcelona',
-      'kuala lumpur': 'Kuala Lumpur',
-      'orlando': 'Orlando',
-      'chicago': 'Chicago',
-      'munich': 'Munich'
-    }
-
-    return cityMap[normalized] || cityName.charAt(0).toUpperCase() + cityName.slice(1).toLowerCase()
-  }
-
   const handleCityClick = (city: (typeof cities)[0]) => {
     router.push(`/event?location=${encodeURIComponent(city.name)}`)
   }
 
-  // Helper function to get count for a city
   const getCityCount = (cityName: string): number => {
-    // Try exact match first, then normalized match
     return counts[cityName] || 0
+  }
+
+  const formatCount = (count: number): string => {
+    if (count >= 1000) {
+      const kValue = (count / 1000).toFixed(1)
+      return kValue.endsWith('.0') ? `${(count / 1000).toFixed(0)}k` : `${kValue}k`
+    }
+    return count.toString()
   }
 
   if (loading) {
     return (
-      <div className="w-full max-w-6xl mx-auto mb-12">
-        <div className="px-6 py-6 border-b border-gray-200 text-left">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-1">
-            Browse Event By City
+      <div className="w-full max-w-7xl mx-auto mb-12 px-4">
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">
+            Browse Events By City
           </h2>
+          <p className="text-gray-600 text-lg">Find events in your favorite cities</p>
         </div>
-        <div className="p-6 text-center">
-          <p className="text-gray-500">Loading cities...</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
+          {Array.from({ length: 12 }).map((_, idx) => (
+            <div key={idx} className="bg-white rounded-xl p-6 shadow-md border border-gray-100 animate-pulse">
+              <div className="flex flex-col items-center space-y-4">
+                <div className="w-16 h-16 bg-gray-200 rounded-full"></div>
+                <div className="w-24 h-4 bg-gray-200 rounded"></div>
+                <div className="w-16 h-4 bg-gray-200 rounded"></div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     )
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto mb-12">
-      <div className="overflow-hidden">
+    <div className="w-full bg-gray-50 py-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="px-6 py-6 border-b border-gray-200 text-left">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-1">
-            Browse Event By City
+        <div className="mb-12 text-start">
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">
+            Browse Events By City
           </h2>
+          <p className="text-gray-600 text-lg">Find events in your favorite cities</p>
         </div>
 
         {/* City Grid */}
-        <div className="p-2">
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-4">
-            {cities.map((city) => {
-              const count = getCityCount(city.name)
-              const formatted = count >= 1000 ? `${(count / 1000).toFixed(1)}k` : count
-
-              return (
-                <button
-                  key={city.id}
-                  onClick={() => handleCityClick(city)}
-                  className="group relative overflow-hidden border border-gray-200 shadow-sm hover:shadow-lg transition-all duration-200 hover:scale-105 bg-white aspect-[4/3] flex flex-col items-center justify-center p-4"
-                >
-                  <div className="mb-3 p-3 rounded-full bg-gray-50 group-hover:bg-gray-100 transition-colors duration-200">
-                    <Image
-                      src={city.icon || "/placeholder.svg"}
-                      alt={city.name}
-                      width={40}
-                      height={40}
-                      className="group-hover:scale-110 transition-transform duration-200"
-                    />
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
+          {cities.map((city) => {
+            const count = getCityCount(city.name)
+            const hasEvents = count > 0
+            
+            return (
+              <button
+                key={city.id}
+                onClick={() => handleCityClick(city)}
+                className="group bg-white  p-6 shadow-md border border-gray-100 hover:border-blue-500 hover:shadow-xl transition-all duration-300 hover:scale-[1.03] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                <div className="flex flex-col items-center text-center space-y-4">
+                  {/* City Icon */}
+                  <div className="relative">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 group-hover:from-blue-100 group-hover:to-blue-200 transition-all duration-300 flex items-center justify-center">
+                      <div className="relative w-10 h-10">
+                        <Image
+                          src={city.icon || "/placeholder.svg"}
+                          alt={city.name}
+                          fill
+                          sizes="40px"
+                          className="object-contain group-hover:scale-110 transition-transform duration-300"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-center">
-                    <h3 className="text-gray-900 font-semibold text-sm mb-1">
+                  
+                  {/* City Name */}
+                  <div>
+                    <h3 className={`text-base font-bold text-gray-900 mb-1 ${city.color}`}>
                       {city.name}
                     </h3>
-                    <p className="text-gray-500 text-xs">
-                      {formatted} Events
+                    <p className="text-sm font-semibold text-gray-500">
+                      {formatCount(count)} Events
                     </p>
                   </div>
-                </button>
-              )
-            })}
-          </div>
+                </div>
+              </button>
+            )
+          })}
         </div>
       </div>
     </div>

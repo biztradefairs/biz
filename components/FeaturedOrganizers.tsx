@@ -59,7 +59,7 @@ export default function FeaturedOrganizers() {
   if (loading) return <p className="text-center py-10">Loading organizers...</p>
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4">
+    <div className="w-full max-w-7xl mx-auto px-4">
       <div className="py-6 border-b border-gray-200 text-left">
         <h2 className="text-2xl font-semibold text-gray-900 mb-1">
           Featured Organizers

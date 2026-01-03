@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { ChevronDown, Search, User, MapPin, Mic, Calendar } from "lucide-react"
+import { ChevronDown, Search, User, MapPin, Mic, Calendar, Menu, X } from "lucide-react"
 import { signIn, signOut, useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 
@@ -71,9 +71,12 @@ export default function Navbar() {
   const [showSearchResults, setShowSearchResults] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
   const [activeTab, setActiveTab] = useState<'all' | 'events' | 'venues' | 'speakers'>('all')
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [showMobileSearch, setShowMobileSearch] = useState(false)
 
   const router = useRouter()
   const searchRef = useRef<HTMLDivElement>(null)
+  const mobileMenuRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -87,6 +90,9 @@ export default function Navbar() {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         setShowSearchResults(false)
+      }
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+        setMobileMenuOpen(false)
       }
     }
 
@@ -146,24 +152,29 @@ export default function Navbar() {
     }, 500) // 🔥 debounce delay
   }
 
-
   // Navigation handlers
   const handleEventClick = (eventId: string) => {
     router.push(`/event/${eventId}`)
     setShowSearchResults(false)
     setSearchQuery("")
+    setMobileMenuOpen(false)
+    setShowMobileSearch(false)
   }
 
   const handleVenueClick = (venueId: string) => {
-    router.push(`/venue/${venueId}`) // Updated to match your venue page structure
+    router.push(`/venue/${venueId}`)
     setShowSearchResults(false)
     setSearchQuery("")
+    setMobileMenuOpen(false)
+    setShowMobileSearch(false)
   }
 
   const handleSpeakerClick = (speakerId: string) => {
-    router.push(`/speakers/${speakerId}`) // Updated to match your speaker page structure
+    router.push(`/speakers/${speakerId}`)
     setShowSearchResults(false)
     setSearchQuery("")
+    setMobileMenuOpen(false)
+    setShowMobileSearch(false)
   }
 
   // UPDATED: Navigate to existing pages with search query
@@ -179,45 +190,46 @@ export default function Navbar() {
         router.push(`/speakers?search=${encodeURIComponent(searchQuery)}`)
         break
       default:
-        // For 'all', you might want to choose a default page or show a message
         router.push(`/event?search=${encodeURIComponent(searchQuery)}`)
         break
     }
     setShowSearchResults(false)
     setSearchQuery("")
+    setMobileMenuOpen(false)
+    setShowMobileSearch(false)
   }
 
-const handleAddevent = async () => {
-  // If not logged in, go to organizer signup directly
-  if (!session) {
-    router.push("/organizer-signup")
-    return
-  }
+  const handleAddevent = async () => {
+    if (!session) {
+      router.push("/organizer-signup")
+      setMobileMenuOpen(false)
+      return
+    }
 
-  const role = session.user?.role
+    const role = session.user?.role
 
-  // Organizers go to their dashboard
-  if (role === "ORGANIZER") {
-    router.push(`/organizer-dashboard/${session.user?.id}`)
-    return
-  }
+    if (role === "ORGANIZER") {
+      router.push(`/organizer-dashboard/${session.user?.id}`)
+      setMobileMenuOpen(false)
+      return
+    }
 
-  // Superadmins go to admin dashboard
-  if (role === "superadmin") {
-    router.push("/admin-dashboard")
-    return
-  }
+    if (role === "superadmin") {
+      router.push("/admin-dashboard")
+      setMobileMenuOpen(false)
+      return
+    }
 
-  // For all other roles (ATTENDEE, etc.), show logout prompt
-  const confirmed = window.confirm(
-    `You are logged in as '${role}'.\n\nPlease login as an organizer to access this page.\n\nClick OK to logout and login as an organizer, or Cancel to stay logged in.`,
-  )
-  
-  if (confirmed) {
-    await signOut({ redirect: false })
-    router.push("/organizer-signup")
+    const confirmed = window.confirm(
+      `You are logged in as '${role}'.\n\nPlease login as an organizer to access this page.\n\nClick OK to logout and login as an organizer, or Cancel to stay logged in.`,
+    )
+    
+    if (confirmed) {
+      await signOut({ redirect: false })
+      router.push("/organizer-signup")
+      setMobileMenuOpen(false)
+    }
   }
-}
 
   const handleDashboard = () => {
     const role = session?.user?.role
@@ -231,6 +243,7 @@ const handleAddevent = async () => {
     } else {
       router.push("/login")
     }
+    setMobileMenuOpen(false)
   }
 
   const handleClick = () => {
@@ -239,10 +252,12 @@ const handleAddevent = async () => {
 
   const handleLogin = () => {
     signIn(undefined, { callbackUrl: "/" })
+    setMobileMenuOpen(false)
   }
 
   const handleLogout = () => {
     signOut({ callbackUrl: "/login" })
+    setMobileMenuOpen(false)
   }
 
   // Helper function to render search results
@@ -284,7 +299,6 @@ const handleAddevent = async () => {
             }}
           >
             <div className="flex items-start gap-3">
-              {/* Icon based on type */}
               <div className="flex-shrink-0 mt-1">
                 {result.type === 'event' || result.resultType === 'event' ? (
                   <Calendar className="w-4 h-4 text-blue-600" />
@@ -300,7 +314,6 @@ const handleAddevent = async () => {
                   {result.title || result.displayName || result.venueName || `${result.firstName} ${result.lastName}`}
                 </h4>
 
-                {/* Event specific info */}
                 {(result.type === 'event' || result.resultType === 'event') && (
                   <>
                     <p className="text-sm text-gray-600 mt-1">
@@ -327,7 +340,6 @@ const handleAddevent = async () => {
                   </>
                 )}
 
-                {/* Venue specific info */}
                 {(result.type === 'venue' || result.resultType === 'venue') && (
                   <>
                     <p className="text-sm text-gray-600 mt-1">{result.location}</p>
@@ -346,7 +358,6 @@ const handleAddevent = async () => {
                   </>
                 )}
 
-                {/* Speaker specific info */}
                 {(result.type === 'speaker' || result.resultType === 'speaker') && (
                   <p className="text-sm text-gray-600 mt-1">
                     Speaker
@@ -355,7 +366,6 @@ const handleAddevent = async () => {
 
               </div>
 
-              {/* Type badge */}
               <div className="flex-shrink-0">
                 <span className={`inline-block px-2 py-1 text-xs rounded capitalize ${result.type === 'event' || result.resultType === 'event'
                     ? 'bg-blue-100 text-blue-800'
@@ -370,7 +380,6 @@ const handleAddevent = async () => {
           </div>
         ))}
 
-        {/* View All Results Button */}
         <div className="p-3 border-t border-gray-100">
           <button
             onClick={() => handleViewAllResults(activeTab)}
@@ -385,65 +394,54 @@ const handleAddevent = async () => {
 
   return (
     <nav className="bg-white shadow-sm">
-      <div className="max-w-1xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-20 items-center">
-          {/* Left group: logo + Explore */}
-          <div className="flex items-center space-x-6">
+          {/* Left section: Logo and mobile menu button */}
+          <div className="flex items-center space-x-4">
+            {/* Mobile menu button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="lg:hidden p-2 rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+            >
+              {mobileMenuOpen ? (
+                <X className="h-6 w-6" />
+              ) : (
+                <Menu className="h-6 w-6" />
+              )}
+            </button>
+
+            {/* Logo */}
             <Link href="/" className="inline-block">
-              <div className="flex items-center ">
+              <div className="flex items-center">
                 <Image
                   src="/logo/bizlogo.png"
                   alt="BizTradeFairs.com"
                   width={160}
                   height={80}
-                  className="h-42 w-auto "
+                  className="h-auto w-auto max-h-16 md:max-h-20"
+                  priority
                 />
               </div>
             </Link>
-
-            <div className="relative">
-              {exploreOpen && (
-                <div className="absolute left-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
-                  <ul className="py-1">
-                    <li>
-                      <Link href="/trade-fairs">
-                        <p className="block px-4 py-2 hover:bg-gray-100">Trade Fairs</p>
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="/conferences">
-                        <p className="block px-4 py-2 hover:bg-gray-100">Conferences</p>
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="/webinars">
-                        <p className="block px-4 py-2 hover:bg-gray-100">Webinars</p>
-                      </Link>
-                    </li>
-                  </ul>
-                </div>
-              )}
-            </div>
           </div>
 
-          {/* Center group: search bar */}
-          <div className="w-full max-w-md flex-1 bg-gray-200 relative" ref={searchRef}>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search events, venues, speakers..."
-                className="w-full text-black py-2 pl-10 pr-12"
-                value={searchQuery}
-                onChange={(e) => handleSearchInput(e.target.value)}
+          {/* Center section: Search bar - Desktop */}
+          <div className="hidden lg:block flex-1 max-w-2xl mx-4">
+            <div className="relative" ref={searchRef}>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search events, venues, speakers..."
+                  className="w-full py-2 pl-4 pr-12 bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white text-black"
+                  value={searchQuery}
+                  onChange={(e) => handleSearchInput(e.target.value)}
+                  onFocus={() => searchQuery.length >= 2 && setShowSearchResults(true)}
+                />
+                <Search className="w-5 h-5 absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              </div>
 
-                onFocus={() => searchQuery.length >= 2 && setShowSearchResults(true)}
-              />
-              <Search className="w-5 h-5 absolute right-5 top-1/2 transform -translate-y-1/2" />
-
-              {/* Enhanced Search Results Dropdown */}
               {showSearchResults && (
                 <div className="absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg z-50 mt-1">
-                  {/* Search Tabs */}
                   <div className="flex border-b border-gray-200">
                     {(['all', 'events', 'venues', 'speakers'] as const).map((tab) => (
                       <button
@@ -458,48 +456,50 @@ const handleAddevent = async () => {
                       </button>
                     ))}
                   </div>
-
-                  {/* Search Results */}
                   {renderSearchResults()}
                 </div>
               )}
             </div>
           </div>
 
-          {/* Right group: links + country selector + profile */}
-          <div className="flex items-center space-x-6">
+          {/* Right section: Desktop navigation */}
+          <div className="hidden lg:flex items-center space-x-6">
             <Link href="/event">
-              <p className="text-gray-700 hover:text-gray-900">Top 10 Must Visit</p>
+              <p className="text-gray-700 hover:text-gray-900 transition-colors">Top 10 Must Visit</p>
             </Link>
             <Link href="/speakers">
-              <p className="text-gray-700 hover:text-gray-900">Speakers</p>
+              <p className="text-gray-700 hover:text-gray-900 transition-colors">Speakers</p>
             </Link>
 
-            <p onClick={handleAddevent} className="text-gray-700 hover:text-gray-900  cursor-pointer">
+            <p onClick={handleAddevent} className="text-gray-700 hover:text-gray-900 transition-colors cursor-pointer">
               Add Event
             </p>
 
             <div className="relative inline-block text-left">
               <button
                 onClick={handleClick}
-                className="p-2 rounded-full bg-[#002C71] text-white hover:bg-gray-100 focus:outline-none"
+                className="p-2 rounded-full bg-[#002C71] text-white hover:bg-[#001a48] transition-colors focus:outline-none"
               >
-                <User className="w-4 h-4" />
+                <User className="w-5 h-5" />
               </button>
 
               {showMenu && (
-                <div className="absolute right-0 mt-2 w-32 bg-white border rounded shadow-md z-50">
+                <div className="absolute right-0 mt-2 w-48 bg-white border rounded-lg shadow-lg z-50">
                   {session ? (
                     <>
+                      <div className="px-4 py-3 border-b">
+                        <p className="text-sm font-medium text-gray-900">{session.user?.name}</p>
+                        <p className="text-xs text-gray-500">{session.user?.email}</p>
+                      </div>
                       <button
                         onClick={handleDashboard}
-                        className="block w-full px-4 py-2 text-sm text-left hover:bg-gray-100 text-gray-800"
+                        className="block w-full px-4 py-3 text-left hover:bg-gray-50 text-gray-700 border-b transition-colors"
                       >
                         Dashboard
                       </button>
                       <button
                         onClick={handleLogout}
-                        className="block w-full px-4 py-2 text-sm text-left hover:bg-red-100 text-red-600"
+                        className="block w-full px-4 py-3 text-left hover:bg-red-50 text-red-600 transition-colors"
                       >
                         Logout
                       </button>
@@ -507,9 +507,62 @@ const handleAddevent = async () => {
                   ) : (
                     <button
                       onClick={handleLogin}
-                      className="block w-full px-4 py-2 text-sm text-left hover:bg-blue-100 text-blue-600"
+                      className="block w-full px-4 py-3 text-left hover:bg-blue-50 text-blue-600 transition-colors"
                     >
-                      Login
+                      Login / Sign Up
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Mobile search and profile buttons */}
+          <div className="flex lg:hidden items-center space-x-4">
+            {/* Mobile search button */}
+            <button
+              onClick={() => setShowMobileSearch(!showMobileSearch)}
+              className="p-2 rounded-full text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+            >
+              <Search className="h-5 w-5" />
+            </button>
+
+            {/* Mobile profile button */}
+            <div className="relative">
+              <button
+                onClick={handleClick}
+                className="p-2 rounded-full bg-[#002C71] text-white hover:bg-[#001a48]"
+              >
+                <User className="h-5 w-5" />
+              </button>
+
+              {showMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-white border rounded-lg shadow-lg z-50">
+                  {session ? (
+                    <>
+                      <div className="px-4 py-3 border-b">
+                        <p className="text-sm font-medium text-gray-900">{session.user?.name}</p>
+                        <p className="text-xs text-gray-500">{session.user?.email}</p>
+                      </div>
+                      <button
+                        onClick={handleDashboard}
+                        className="block w-full px-4 py-3 text-left hover:bg-gray-50 text-gray-700 border-b"
+                      >
+                        Dashboard
+                      </button>
+                      <button
+                        onClick={handleLogout}
+                        className="block w-full px-4 py-3 text-left hover:bg-red-50 text-red-600"
+                      >
+                        Logout
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={handleLogin}
+                      className="block w-full px-4 py-3 text-left hover:bg-blue-50 text-blue-600"
+                    >
+                      Login / Sign Up
                     </button>
                   )}
                 </div>
@@ -517,6 +570,104 @@ const handleAddevent = async () => {
             </div>
           </div>
         </div>
+
+        {/* Mobile search bar */}
+        {showMobileSearch && (
+          <div className="lg:hidden pb-4 px-2" ref={searchRef}>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search events, venues, speakers..."
+                className="w-full py-3 pl-4 pr-12 bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white text-black"
+                value={searchQuery}
+                onChange={(e) => handleSearchInput(e.target.value)}
+                onFocus={() => searchQuery.length >= 2 && setShowSearchResults(true)}
+              />
+              <Search className="w-5 h-5 absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            </div>
+
+            {showSearchResults && (
+              <div className="absolute left-4 right-4 bg-white border border-gray-200 rounded-md shadow-lg z-50 mt-1 max-h-80 overflow-y-auto">
+                <div className="flex border-b border-gray-200">
+                  {(['all', 'events', 'venues', 'speakers'] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      className={`flex-1 px-4 py-3 text-sm font-medium capitalize ${activeTab === tab
+                          ? 'text-blue-600 border-b-2 border-blue-600'
+                          : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                    >
+                      {tab} {tab !== 'all' && `(${searchResults[tab as keyof SearchResults]?.length || 0})`}
+                    </button>
+                  ))}
+                </div>
+                {renderSearchResults()}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Mobile menu */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden pb-4 border-t border-gray-200" ref={mobileMenuRef}>
+            <div className="flex flex-col space-y-1 pt-4">
+              <Link href="/event">
+                <p 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-4 py-3 text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors"
+                >
+                  Top 10 Must Visit
+                </p>
+              </Link>
+              <Link href="/speakers">
+                <p 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-4 py-3 text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors"
+                >
+                  Speakers
+                </p>
+              </Link>
+              <p 
+                onClick={handleAddevent}
+                className="px-4 py-3 text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors cursor-pointer"
+              >
+                Add Event
+              </p>
+              
+              {/* Auth section in mobile menu */}
+              <div className="px-4 py-3 border-t border-gray-200">
+                {session ? (
+                  <>
+                    <div className="mb-3">
+                      <p className="text-sm font-medium text-gray-900">{session.user?.name}</p>
+                      <p className="text-xs text-gray-500">{session.user?.email}</p>
+                    </div>
+                    <button
+                      onClick={handleDashboard}
+                      className="w-full text-left px-4 py-3 mb-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                    >
+                      Dashboard
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-3 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition-colors"
+                    >
+                      Logout
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleLogin}
+                    className="w-full text-left px-4 py-3 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors"
+                  >
+                    Login / Sign Up
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   )

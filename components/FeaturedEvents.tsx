@@ -87,14 +87,14 @@ function EventCard({ event }: { event: Event }) {
       <div
         className="flex bg-white border border-gray-200 
                    shadow-sm hover:shadow-md hover:-translate-y-1 
-                   transition-all duration-300 overflow-hidden h-[160px] rounded-xl p-3"
+                   transition-all duration-300 overflow-hidden h-[160px] p-3"
       >
         {/* Left: Image */}
         <div className="w-[160px] h-full flex-shrink-0 bg-gray-100">
           <img
             src={event.bannerImage || "/herosection-images/food.jpg"}
             alt={event.title}
-            className="w-full h-full rounded-xl object-cover"
+            className="w-full h-full rounded-lg object-cover"
           />
         </div>
 
@@ -157,7 +157,7 @@ export default async function FeaturedEvents() {
   ));
 
   return (
-    <div className="w-full max-w-6xl mx-auto mb-12 mt-12">
+    <div className="w-full max-w-7xl mx-auto mb-12 mt-12">
       {/* Section Header */}
       <div className="px-6 py-6 border-b border-gray-200 text-left">
         <h2 className="text-3xl font-semibold text-gray-900 mb-1">Featured Events</h2>

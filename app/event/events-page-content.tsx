@@ -919,7 +919,7 @@ export default function EventsPageContent() {
       {/* MAIN CONTAINER WITH RESPONSIVE PADDING */}
       {/* Mobile/Tablet: less gap (like laptop) */}
       {/* Desktop (big screen): more gap */}
-      <div className="w-full px-4 sm:px-6 md:px-8 lg:px-12 xl:px-24 2xl:px-32 py-6">
+      <div className="w-full px-4 sm:px-6 md:px-8 lg:px-12 xl:px-35 2xl:px-50 py-6">
         <div className="w-full py-6">
           {/* Tabs Navigation */}
           <div className="flex flex-wrap gap-1 sm:gap-2 mb-6 border-b border-gray-300 overflow-x-auto">
@@ -1304,7 +1304,7 @@ export default function EventsPageContent() {
                 </div>
               </div>
 
-              {/* Events List - Cards with better text alignment */}
+              {/* Events List - Cards with fixed 460x270 dimensions */}
               <div className="space-y-6">
                 {paginatedEvents.length === 0 ? (
                   <div className="text-center py-12 bg-white rounded-lg sm:rounded-xl shadow">
@@ -1322,20 +1322,23 @@ export default function EventsPageContent() {
                 ) : (
                   paginatedEvents.map((event) => (
                     <Link href={`/event/${event.id}`} key={event.id} className="block">
-                      <div className="bg-white border border-gray-300 rounded-md overflow-hidden shadow hover:shadow-xl transition-all duration-300 w-full max-w-6xl mx-auto">
-                        <CardContent className="p-0">
-                          <div className="flex flex-col sm:flex-row">
-                            {/* IMAGE SECTION (REDUCED SIZE) */}
-                            <div className="relative w-full sm:w-5/12 md:w-[30%] h-[190px]">
-                              <img
-                                src={getEventImage(event) || "/placeholder.svg"}
-                                alt={event.title}
-                                className="w-full h-full object-cover rounded-sm p-3 mt-3"
-                              />
+                      {/* MAIN CARD CONTAINER - FIXED 460x270 */}
+                      <div className="bg-white border border-gray-300 rounded-md overflow-hidden shadow hover:shadow-xl transition-all duration-300 w-full max-w-6xl mx-auto h-[270px]">
+                        <CardContent className="p-0 h-full">
+                          <div className="flex flex-col sm:flex-row h-full">
+                            {/* IMAGE SECTION - FIXED WIDTH AND HEIGHT */}
+                            <div className="relative w-full sm:w-[250px] h-[150px] sm:h-full flex-shrink-0">
+                              <div className="absolute inset-0 m-3">
+                                <img
+                                  src={getEventImage(event) || "/placeholder.svg"}
+                                  alt={event.title}
+                                  className="w-full h-full object-cover rounded-sm"
+                                />
+                              </div>
                             </div>
 
-                            {/* CONTENT SECTION */}
-                            <div className="flex-1 flex flex-col justify-between p-4 sm:p-5 relative">
+                            {/* CONTENT SECTION - TAKES REMAINING SPACE */}
+                            <div className="flex-1 flex flex-col justify-between p-4 sm:p-5 relative min-w-0">
                               {/* RIGHT SIDE BADGES (EDITION + TYPE) */}
                               <div className="absolute top-4 right-4 flex items-center gap-2 bg-white/90 backdrop-blur px-3 py-1 rounded-full shadow-lg">
                                 <img

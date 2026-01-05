@@ -319,6 +319,10 @@ model Event {
   tags             String[]
   eventType        String[]
 
+  isVerified  Boolean  @default(false)
+  verifiedAt  DateTime?
+  verifiedBy  String?
+  verifiedBadgeImage   String?
   isFeatured Boolean? @default(false)
   isVIP      Boolean? @default(false)
 

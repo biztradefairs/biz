@@ -1,4 +1,3 @@
-// app/api/events/route.ts
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 
@@ -6,6 +5,15 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const stats = searchParams.get("stats")
+
+    const statusMap = {
+      "PUBLISHED": "Approved",
+      "PENDING_APPROVAL": "Pending Review",
+      "DRAFT": "Draft",
+      "CANCELLED": "Flagged",
+      "REJECTED": "Rejected",
+      "COMPLETED": "Approved"
+    }
 
     // If stats=true, return category statistics
     if (stats === "true") {
@@ -65,7 +73,7 @@ export async function GET(request: Request) {
       })
     }
 
-    // Original event fetching logic...
+    // Original event fetching logic
     const page = parseInt(searchParams.get("page") || "1")
     const limit = parseInt(searchParams.get("limit") || "12")
     const category = searchParams.get("category")
@@ -75,6 +83,7 @@ export async function GET(request: Request) {
     const endDate = searchParams.get("endDate")
     const featured = searchParams.get("featured")
     const sort = searchParams.get("sort") || "newest"
+    const verified = searchParams.get("verified") // Add this line
     
     const skip = (page - 1) * limit
 
@@ -119,6 +128,11 @@ export async function GET(request: Request) {
       where.isFeatured = true
     }
 
+    // Add verification filter
+    if (verified === "true") {
+      where.isVerified = true
+    }
+
     // Build orderBy clause
     let orderBy: any = {}
     switch (sort) {
@@ -136,6 +150,9 @@ export async function GET(request: Request) {
         break
       case "featured":
         orderBy = [{ isFeatured: "desc" }, { createdAt: "desc" }]
+        break
+      case "verified":
+        orderBy = [{ isVerified: "desc" }, { createdAt: "desc" }] // Add verified sort
         break
       default:
         orderBy = { createdAt: "desc" }
@@ -221,12 +238,15 @@ export async function GET(request: Request) {
         address: event.venue?.venueAddress || "",
         isVirtual: event.isVirtual,
         virtualLink: event.virtualLink,
-        status: event.status,
+        status: statusMap[event.status] || "Pending Review",
         category: event.category || [],
         tags: event.tags || [],
         eventType: event.eventType || [],
         isFeatured: event.isFeatured,
         isVIP: event.isVIP,
+        isVerified: event.isVerified || false, // Add this line
+        verifiedAt: event.verifiedAt?.toISOString(), // Add this line
+        verifiedBy: event.verifiedBy || "", // Add this line
         attendees: event._count.registrations,
         totalReviews: event._count.reviews,
         averageRating: avgRating,

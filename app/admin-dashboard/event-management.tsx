@@ -17,6 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useSession } from "next-auth/react"
 import {
   Download,
   Edit,
@@ -1349,6 +1350,7 @@ function EventList({
 
 // Main Component
 export default function EventManagement() {
+  const { data: session } = useSession()
   const [events, setEvents] = useState<Event[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
@@ -1525,56 +1527,85 @@ export default function EventManagement() {
     }
   }
 
-  const handleVerifyToggle = async (event: Event, verify: boolean, customBadge?: File) => {
-    try {
-      setVerifying(true)
-      
-      const formData = new FormData()
-      formData.append("isVerified", verify.toString())
-      
-      if (customBadge && verify) {
-        formData.append("badgeFile", customBadge)
-      }
-
-      const res = await fetch(`/api/admin/events/${event.id}/verify`, {
-        method: "POST",
-        body: formData,
+const handleVerifyToggle = async (event: Event, verify: boolean, customBadge?: File) => {
+  try {
+    setVerifying(true)
+    
+    const formData = new FormData()
+    formData.append("isVerified", verify.toString())
+    
+    // Log file info for debugging
+    if (customBadge) {
+      console.log("Custom badge file info:", {
+        name: customBadge.name,
+        size: customBadge.size,
+        type: customBadge.type,
       })
-      
-      const result = await res.json()
-      
-      if (!res.ok) throw new Error(result.error || "Failed to update verification")
-      
-      // Update the event in state with all verification fields
-      setEvents(prev => prev.map((e) => 
-        e.id === event.id ? {
+      formData.append("badgeFile", customBadge)
+    }
+
+    console.log("Sending verification request for event:", event.id, "verify:", verify)
+    
+    const res = await fetch(`/api/admin/events/${event.id}/verify`, {
+      method: "POST",
+      body: formData,
+    })
+    
+    const result = await res.json()
+    
+    console.log("Verification API response:", {
+      status: res.status,
+      ok: res.ok,
+      result: result,
+    })
+    
+    if (!res.ok) {
+      throw new Error(result.error || result.details || "Failed to update verification")
+    }
+    
+    // Update the event in state with all verification fields
+    setEvents(prev => prev.map((e) => {
+      if (e.id === event.id) {
+        const updatedEvent = {
           ...e,
           isVerified: verify,
           verifiedAt: verify ? new Date().toISOString() : null,
-          verifiedBy: verify ? result.event?.verifiedBy || "Admin" : null,
+          verifiedBy: verify ? result.event?.verifiedBy || session?.user?.email || "Admin" : null,
           verifiedBadgeImage: verify ? (result.event?.verifiedBadgeImage || "/badge/VerifiedBADGE (1).png") : null,
-        } : e
-      ))
-      
-      setIsVerifyDialogOpen(false)
-      
-      toast({
-        title: verify ? "Event Verified" : "Verification Removed",
-        description: verify 
-          ? "Event has been marked as verified" 
-          : "Event verification has been removed",
-      })
-    } catch (error) {
-      console.error("Failed to update verification:", error)
-      toast({
-        title: "Error",
-        description: "Failed to update verification status",
-        variant: "destructive",
-      })
-    } finally {
-      setVerifying(false)
+        }
+        console.log("Updated event in state:", updatedEvent)
+        return updatedEvent
+      }
+      return e
+    }))
+    
+    setIsVerifyDialogOpen(false)
+    
+    toast({
+      title: verify ? "✅ Event Verified" : "🗑️ Verification Removed",
+      description: verify 
+        ? "Event has been marked as verified with Cloudinary badge" 
+        : "Event verification has been removed",
+    })
+  } catch (error) {
+    console.error("Failed to update verification:", error)
+    
+    // More detailed error message
+    let errorMessage = "Failed to update verification status"
+    if (error instanceof Error) {
+      errorMessage = error.message
     }
+    
+    toast({
+      title: "❌ Error",
+      description: errorMessage,
+      variant: "destructive",
+      duration: 5000,
+    })
+  } finally {
+    setVerifying(false)
   }
+}
 
   const handleDeleteEvent = async (eventId: string) => {
     if (!confirm("Are you sure you want to delete this event?")) return

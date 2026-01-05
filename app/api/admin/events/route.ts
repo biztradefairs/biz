@@ -174,14 +174,15 @@ async function findOrCreateUser(userData: {
   return newUser
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session || (session.user?.role !== "SUPER_ADMIN" && session.user?.role !== "SUB_ADMIN")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const events = await prisma.event.findMany({
-      where: {
-        status: { not: "CANCELLED" }
-      },
-      take: 100,
-      orderBy: { createdAt: "desc" },
       include: {
         organizer: {
           select: {
@@ -196,90 +197,80 @@ export async function GET() {
             venueCity: true,
           },
         },
-        promotions: {
-          select: { amount: true },
-        },
-        reviews: true,
-        analytics: {
-          select: {
-            totalRevenue: true,
-            totalRegistrations: true,
-            pageViews: true,
-          },
-        },
-        ticketTypes: {
-          select: {
-            price: true,
-          },
-        },
-        speakerSessions: {
-          include: {
-            speaker: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                company: true
-              }
-            }
-          }
-        }
       },
+      orderBy: {
+        createdAt: 'desc'
+      }
     })
 
-    const formattedEvents = events.map((event) => ({
+    // Transform events to match frontend interface
+    const formattedEvents = events.map(event => ({
       id: event.id,
       title: event.title,
-      organizer:
+      organizer: 
         event.organizer?.organizationName ||
-        `${event.organizer?.firstName ?? ""} ${event.organizer?.lastName ?? ""}`.trim() ||
+        `${event.organizer?.firstName || ""} ${event.organizer?.lastName || ""}`.trim() ||
         "Unknown Organizer",
+      organizerId: event.organizerId,
       date: event.startDate.toISOString().split('T')[0],
       endDate: event.endDate.toISOString().split('T')[0],
       location: event.venue?.venueCity || "Virtual",
       venue: event.venue?.venueName || "N/A",
-      status:
-        event.status === "PUBLISHED"
-          ? "Approved"
-          : event.status === "DRAFT"
-          ? "Pending Review"
-          : event.status === "CANCELLED"
-          ? "Flagged"
-          : "Completed",
+      status: event.status === "PUBLISHED" ? "Approved" :
+              event.status === "PENDING_APPROVAL" ? "Pending Review" :
+              event.status === "DRAFT" ? "Draft" :
+              event.status === "CANCELLED" ? "Flagged" : "Completed",
       attendees: event.currentAttendees || 0,
       maxCapacity: event.maxAttendees || 0,
-      revenue: event.analytics?.[0]?.totalRevenue || 0,
-      ticketPrice: event.ticketTypes?.[0]?.price || 0,
+      revenue: 0,
+      ticketPrice: 0,
       category: event.category?.[0] || "Other",
       featured: event.isFeatured || false,
       vip: event.isVIP || false,
       priority: "Medium",
       description: event.description,
-      tags: event.tags,
+      shortDescription: event.shortDescription,
+      slug: event.slug,
+      edition: event.edition,
+      tags: event.tags || [],
+      eventType: event.eventType?.[0] || "",
+      timezone: event.timezone,
+      currency: event.currency,
       createdAt: event.createdAt.toISOString(),
       lastModified: event.updatedAt.toISOString(),
-      views: event.analytics?.[0]?.pageViews || 0,
-      registrations: event.analytics?.[0]?.totalRegistrations || 0,
-      rating: event.averageRating,
-      reviews: event.totalReviews,
+      views: 0,
+      registrations: 0,
+      rating: 0,
+      reviews: 0,
       image: event.bannerImage || "/placeholder.svg",
-      promotionBudget:
-        event.promotions.reduce((acc, p) => acc + (p.amount || 0), 0) || 0,
+      bannerImage: event.bannerImage,
+      thumbnailImage: event.thumbnailImage,
+      images: event.images || [],
+      videos: event.videos || [],
+      brochure: event.brochure,
+      layout: event.layoutPlan,
+      documents: event.documents || [],
+      promotionBudget: 0,
       socialShares: Math.floor(Math.random() * 1000),
-      speakers: event.speakerSessions?.map(session => ({
-        id: session.speaker.id,
-        name: `${session.speaker.firstName} ${session.speaker.lastName}`,
-        company: session.speaker.company
-      })) || []
+      
+      // ✅ CRITICAL FIX: Include ALL verification fields
+      isVerified: event.isVerified || false,
+      verifiedAt: event.verifiedAt?.toISOString() || null,
+      verifiedBy: event.verifiedBy || null,
+      verifiedBadgeImage: event.verifiedBadgeImage || null,
     }))
 
-    return NextResponse.json({ events: formattedEvents })
+    return NextResponse.json({
+      success: true,
+      events: formattedEvents
+    })
   } catch (error) {
     console.error("Error fetching events:", error)
-    return NextResponse.json(
-      { error: "Failed to load events" },
-      { status: 500 }
-    )
+    return NextResponse.json({ 
+      success: false,
+      error: "Internal server error",
+      details: error instanceof Error ? error.message : "Unknown error"
+    }, { status: 500 })
   }
 }
 

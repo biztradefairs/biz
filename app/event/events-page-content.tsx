@@ -78,7 +78,28 @@ interface Event {
 interface ApiResponse {
   events: Event[]
 }
+// Enhanced Verified Badge Component for public display
+function EventVerifiedBadge({ event }: { event: Event }) {
+  if (!event.isVerified) return null
 
+  return (
+    <div className="flex items-center gap-1 bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-semibold border border-green-300">
+      {event.verifiedBadgeImage ? (
+        <img 
+          src={event.verifiedBadgeImage} 
+          alt="Verified" 
+          className="w-4 h-4"
+          onError={(e) => {
+            e.currentTarget.src = "/badge/VerifiedBADGE (1).png"
+          }}
+        />
+      ) : (
+        <ShieldCheck className="w-4 h-4" />
+      )}
+      <span>Verified</span>
+    </div>
+  )
+}
 export default function EventsPageContent() {
   const [activeTab, setActiveTab] = useState("All Events")
   const [selectedFormat, setSelectedFormat] = useState("All Formats")
@@ -1369,154 +1390,138 @@ export default function EventsPageContent() {
                 </div>
               </div>
 
-              {/* Events List - Cards with fixed 460x270 dimensions */}
-              <div className="space-y-6">
-                {paginatedEvents.length === 0 ? (
-                  <div className="text-center py-12 bg-white rounded-lg sm:rounded-xl shadow">
-                    <p className="text-gray-500 text-lg sm:text-xl font-bold mb-4">
-                      {activeTab === "Verified" 
-                        ? "No verified events found" 
-                        : "No events found matching your criteria"}
-                    </p>
-                    <Button
-                      variant="outline"
-                      className="mt-4 font-bold text-sm sm:text-base px-4 sm:px-6 py-2 bg-transparent"
-                      onClick={clearAllFilters}
-                    >
-                      Clear All Filters
-                    </Button>
-                    {activeTab === "Verified" && (
-                      <Button
-                        variant="default"
-                        className="mt-4 ml-4 font-bold text-sm sm:text-base px-4 sm:px-6 py-2 bg-blue-600 hover:bg-blue-700"
-                        onClick={() => setActiveTab("All Events")}
-                      >
-                        View All Events
-                      </Button>
-                    )}
+            {/* Events List - Cards with fixed 460x270 dimensions */}
+<div className="space-y-6">
+  {paginatedEvents.length === 0 ? (
+    <div className="text-center py-12 bg-white rounded-lg sm:rounded-xl shadow">
+      <p className="text-gray-500 text-lg sm:text-xl font-bold mb-4">
+        {activeTab === "Verified" 
+          ? "No verified events found" 
+          : "No events found matching your criteria"}
+      </p>
+      <Button
+        variant="outline"
+        className="mt-4 font-bold text-sm sm:text-base px-4 sm:px-6 py-2 bg-transparent"
+        onClick={clearAllFilters}
+      >
+        Clear All Filters
+      </Button>
+      {activeTab === "Verified" && (
+        <Button
+          variant="default"
+          className="mt-4 ml-4 font-bold text-sm sm:text-base px-4 sm:px-6 py-2 bg-blue-600 hover:bg-blue-700"
+          onClick={() => setActiveTab("All Events")}
+        >
+          View All Events
+        </Button>
+      )}
+    </div>
+  ) : (
+    paginatedEvents.map((event) => (
+      <Link href={`/event/${event.id}`} key={event.id} className="block">
+        <div className="relative bg-white border border-gray-300 rounded-lg overflow-hidden w-full hover:shadow-lg transition-shadow duration-300">
+
+          <div className="flex flex-col md:flex-row">
+
+            {/* LEFT CONTENT */}
+            <div className="flex-1 px-4 sm:px-5 py-4">
+
+              {/* DATE */}
+              <p className="text-xs sm:text-sm font-medium text-gray-600 mb-1">
+                {formatDate(event.timings.startDate)}
+                {event.timings.endDate && <> - {formatDate(event.timings.endDate)}</>}
+                {" "}{formatYear(event.timings.startDate)}
+              </p>
+
+              {/* TITLE WITH VERIFIED BADGE */}
+              <div className="flex items-start justify-between gap-3 mb-1">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-[18px] sm:text-[20px] font-bold text-[#1F5D84] leading-snug">
+                      {event.title}
+                    </h3>
+                    {event.isVerified && <EventVerifiedBadge event={event} />}
                   </div>
-                ) : (
-                  paginatedEvents.map((event) => (
-                    <Link href={`/event/${event.id}`} key={event.id} className="block">
-                      <div className="relative bg-white border border-gray-300 rounded-lg overflow-hidden w-full">
-
-                        <div className="flex flex-col md:flex-row">
-
-                          {/* LEFT CONTENT */}
-                          <div className="flex-1 px-4 sm:px-5 py-4">
-
-                            {/* DATE */}
-                            <p className="text-xs sm:text-sm font-medium text-gray-600 mb-1">
-                              {formatDate(event.timings.startDate)}
-                              {event.timings.endDate && <> - {formatDate(event.timings.endDate)}</>}
-                              {" "}{formatYear(event.timings.startDate)}
-                            </p>
-
-                            {/* TITLE */}
-                            <div className="flex items-start justify-between gap-3 mb-1">
-                              <h3 className="text-[18px] sm:text-[20px] font-bold text-[#1F5D84] leading-snug">
-                                {event.title}
-                              </h3>
-
-                              {/* VERIFIED BADGE - Only show if event is verified */}
-                              {event.isVerified && event.verifiedBadgeImage && (
-                                <div className="flex flex-col items-end gap-1">
-                                  <img
-                                    src={event.verifiedBadgeImage}
-                                    alt="Verified Event"
-                                    className="w-6 h-6 flex-shrink-0"
-                                    onError={(e) => {
-                                      e.currentTarget.src = "/badge/VerifiedBADGE (1).png"
-                                    }}
-                                  />
-                                </div>
-                              )}
-                            </div>
-
-
-                            {/* LOCATION */}
-                            <p className="text-sm font-medium text-gray-700 mb-3 flex items-center">
-                              {event.location?.city}, {event.location?.country}
-                            </p>
-
-                            {/* DESCRIPTION */}
-                            <p className="text-sm text-gray-600 line-clamp-3 mb-4 max-w-[95%]">
-                              {event.description}
-                            </p>
-
-                            {/* CATEGORIES */}
-                            <div className="flex flex-wrap gap-2 mb-5">
-                              {event.categories.slice(0, 3).map((cat, i) => (
-                                <span
-                                  key={i}
-                                  className="bg-gray-100 text-gray-700 px-3 py-1 rounded-md text-xs font-semibold"
-                                >
-                                  {cat}
-                                </span>
-                              ))}
-                            </div>
-
-                            {/* BOTTOM LEFT INFO — NO LINE */}
-                            <div className="flex flex-wrap items-center gap-4 text-sm font-semibold text-gray-700">
-
-                              {/* FOLLOWERS */}
-                              <div className="flex items-center gap-1">
-                                <Users className="w-4 h-4" />
-                                {visitorCounts[event.id] ?? 0}
-                              </div>
-
-                              {/* SAVE */}
-                              <BookmarkButton
-                                eventId={event.id}
-                                className="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md text-xs"
-                              />
-
-                              {/* FREE / PAID */}
-                              <span
-                                className={`px-3 py-1 rounded-full text-xs font-bold ${event.pricing.general === 0
-                                    ? "bg-green-100 text-green-800"
-                                    : "bg-red-100 text-red-800"
-                                  }`}
-                              >
-                                {event.pricing.general === 0 ? "Free Entry" : "Paid Entry"}
-                              </span>
-
-                            </div>
-                          </div>
-
-                          {/* RIGHT IMAGE */}
-                          <div className="w-full md:w-[220px] h-[160px] md:h-auto flex-shrink-0 p-3">
-                            <img
-                              src={getEventImage(event)}
-                              alt={event.title}
-                              className="w-full h-[150px] object-cover rounded-md"
-                            />
-                            {/* Verified overlay on image */}
-                            {event.isVerified && (
-                              <div className="absolute top-4 right-4 bg-green-500 text-white px-2 py-1 rounded text-xs font-bold flex items-center gap-1">
-                                <ShieldCheck className="w-3 h-3" />
-                                Verified
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* ⭐ RATING + SHARE — FLOATING */}
-                        <div className="absolute bottom-4 right-4 flex items-center gap-4">
-                          <div className="flex items-center gap-1 text-sm font-bold text-gray-800">
-                            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                            {Number.isFinite(event.rating?.average)
-                              ? event.rating.average.toFixed(1)
-                              : "0.0"}
-                          </div>
-                          <ShareButton id={event.id} title={event.title} type="event" />
-                        </div>
-
-                      </div>
-                    </Link>
-                  ))
-                )}
+                </div>
               </div>
+
+              {/* LOCATION */}
+              <p className="text-sm font-medium text-gray-700 mb-3 flex items-center">
+                <MapPin className="w-4 h-4 mr-1 text-gray-500" />
+                {event.location?.city}, {event.location?.country}
+              </p>
+
+              {/* DESCRIPTION */}
+              <p className="text-sm text-gray-600 line-clamp-3 mb-4 max-w-[95%]">
+                {event.description}
+              </p>
+
+              {/* CATEGORIES */}
+              <div className="flex flex-wrap gap-2 mb-5">
+                {event.categories.slice(0, 3).map((cat, i) => (
+                  <span
+                    key={i}
+                    className="bg-gray-100 text-gray-700 px-3 py-1 rounded-md text-xs font-semibold"
+                  >
+                    {cat}
+                  </span>
+                ))}
+              </div>
+
+              {/* BOTTOM LEFT INFO */}
+              <div className="flex flex-wrap items-center gap-4 text-sm font-semibold text-gray-700">
+
+                {/* FOLLOWERS */}
+                <div className="flex items-center gap-1">
+                  <Users className="w-4 h-4" />
+                  {visitorCounts[event.id] ?? 0}
+                </div>
+
+                {/* SAVE */}
+                <BookmarkButton
+                  eventId={event.id}
+                  className="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md text-xs"
+                />
+
+                {/* FREE / PAID */}
+                <span
+                  className={`px-3 py-1 rounded-full text-xs font-bold ${event.pricing.general === 0
+                      ? "bg-green-100 text-green-800"
+                      : "bg-red-100 text-red-800"
+                    }`}
+                >
+                  {event.pricing.general === 0 ? "Free Entry" : "Paid Entry"}
+                </span>
+
+              </div>
+            </div>
+
+            {/* RIGHT IMAGE WITH VERIFIED OVERLAY */}
+            <div className="w-full md:w-[220px] h-[160px] md:h-auto flex-shrink-0 p-3 relative">
+              <img
+                src={getEventImage(event)}
+                alt={event.title}
+                className="w-full h-[150px] object-cover rounded-md"
+              />
+            </div>
+          </div>
+
+          {/* ⭐ RATING + SHARE — FLOATING */}
+          <div className="absolute bottom-4 right-4 flex items-center gap-4">
+            <div className="flex items-center gap-1 text-sm font-bold text-gray-800">
+              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+              {Number.isFinite(event.rating?.average)
+                ? event.rating.average.toFixed(1)
+                : "0.0"}
+            </div>
+            <ShareButton id={event.id} title={event.title} type="event" />
+          </div>
+
+        </div>
+      </Link>
+    ))
+  )}
+</div>
 
               {/* Featured Events - Show verified featured events first */}
               {featuredEvents.length > 0 && (
@@ -1574,12 +1579,7 @@ export default function EventsPageContent() {
                             <Badge className="bg-blue-600 text-white text-sm font-bold px-3 py-1.5 shadow-lg">
                               Featured ✨
                             </Badge>
-                            {event.isVerified && (
-                              <Badge className="bg-green-600 text-white text-sm font-bold px-3 py-1.5 shadow-lg">
-                                <ShieldCheck className="w-3 h-3 mr-1" />
-                                Verified
-                              </Badge>
-                            )}
+                           
                           </div>
                         </div>
                         <CardContent className="p-5">
@@ -1648,13 +1648,9 @@ export default function EventsPageContent() {
                 <div className="w-full">
                   <AdCard />
                 </div>
-
                 {/* Trending/Premium Events */}
                 <div className="flex items-center justify-between">
                   <h3 className="text-2xl font-black text-gray-900">🔥 Trending Events</h3>
-                  <Badge className="bg-green-100 text-green-800">
-                    {events.filter(e => e.isVerified).length} Verified
-                  </Badge>
                 </div>
 
                 {/* Desktop View - Vertical List */}
@@ -1672,18 +1668,7 @@ export default function EventsPageContent() {
                             alt={event.title}
                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                           />
-                          {event.isVerified && (
-                            <div className="absolute top-1 right-1">
-                              <img
-                                src={event.verifiedBadgeImage || "/badge/VerifiedBADGE (1).png"}
-                                alt="Verified"
-                                className="w-4 h-4"
-                                onError={(e) => {
-                                  e.currentTarget.src = "/badge/VerifiedBADGE (1).png"
-                                }}
-                              />
-                            </div>
-                          )}
+                        
                         </div>
 
                         {/* CONTENT */}
@@ -1693,11 +1678,7 @@ export default function EventsPageContent() {
                             <h3 className="font-sans text-[19.2px] font-semibold text-[#1F5D84] mb-1 line-clamp-2 flex-1">
                               {event.title}
                             </h3>
-                            {event.isVerified && (
-                              <Badge className="bg-green-100 text-green-800 text-xs ml-2">
-                                Verified
-                              </Badge>
-                            )}
+                          
                           </div>
 
                           {/* EVENT TYPE / CATEGORY — 14px system-ui */}

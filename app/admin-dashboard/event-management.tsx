@@ -38,9 +38,13 @@ import {
   Image,
   Video,
   FileText,
+  ShieldCheck,
+  ShieldOff,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { toast } from "@/hooks/use-toast"
 
+// ✅ UPDATED Event Interface with verification fields
 interface Event {
   id: string
   title: string
@@ -83,6 +87,12 @@ interface Event {
   documents: string[]
   promotionBudget: number
   socialShares: number
+  
+  // ✅ VERIFICATION FIELDS - MAKE SURE THESE ARE INCLUDED
+  isVerified: boolean
+  verifiedAt: string | null
+  verifiedBy: string | null
+  verifiedBadgeImage: string | null
 }
 
 interface Category {
@@ -92,6 +102,148 @@ interface Category {
   color?: string
   isActive: boolean
   eventCount?: number
+}
+
+// Verification Dialog Component
+function VerifyEventDialog({
+  event,
+  open,
+  onOpenChange,
+  onVerify,
+  loading,
+}: {
+  event: Event | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onVerify: (verify: boolean, customBadge?: File) => void
+  loading: boolean
+}) {
+  const [customBadgeFile, setCustomBadgeFile] = useState<File | null>(null)
+
+  if (!event || !open) return null
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">
+            {event.isVerified ? "Remove Verification" : "Verify Event"}
+          </h3>
+          <button onClick={() => onOpenChange(false)} className="text-gray-400 hover:text-gray-600">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        
+        {!event.isVerified ? (
+          <>
+            <p className="text-sm text-gray-600 mb-4">
+              Verify "{event.title}" and optionally upload a custom badge image.
+            </p>
+            
+            <div className="space-y-4 mb-6">
+              <div>
+                <Label htmlFor="badge-upload">Custom Badge (Optional)</Label>
+                <Input
+                  id="badge-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setCustomBadgeFile(e.target.files?.[0] || null)}
+                  className="mt-1"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  PNG, JPG, or SVG. Recommended: 100x100px
+                </p>
+              </div>
+
+              {customBadgeFile && (
+                <div>
+                  <Label>Preview:</Label>
+                  <div className="mt-2 flex items-center gap-4">
+                    <img
+                      src={URL.createObjectURL(customBadgeFile)}
+                      alt="Custom badge preview"
+                      className="w-20 h-20 object-contain border rounded"
+                    />
+                    <div className="text-sm text-gray-600">
+                      <p>Custom badge will be used</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <Label>Default Badge:</Label>
+                <div className="mt-2 flex items-center gap-4">
+                  <img
+                    src="/badge/VerifiedBADGE (1).png"
+                    alt="Default badge"
+                    className="w-20 h-20 object-contain border rounded"
+                  />
+                  <div className="text-sm text-gray-600">
+                    <p>Will be used if no custom badge is provided</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <p className="text-sm text-gray-600 mb-6">
+            Are you sure you want to remove verification from "{event.title}"?
+          </p>
+        )}
+
+        <div className="flex gap-3 justify-end">
+          <Button
+            variant="outline"
+            onClick={() => {
+              onOpenChange(false)
+              setCustomBadgeFile(null)
+            }}
+            disabled={loading}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant={event.isVerified ? "destructive" : "default"}
+            onClick={() => {
+              onVerify(!event.isVerified, customBadgeFile ?? undefined)
+
+              if (!event.isVerified) {
+                setCustomBadgeFile(null)
+              }
+            }}
+            disabled={loading}
+          >
+            {loading ? "Processing..." : 
+              event.isVerified ? "Remove Verification" : "Verify Event"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Verified Badge Display Component
+function VerifiedBadge({ event }: { event: Event }) {
+  if (!event.isVerified) return null
+
+  return (
+    <Badge className="bg-green-100 text-green-800 border border-green-300">
+      {event.verifiedBadgeImage ? (
+        <img 
+          src={event.verifiedBadgeImage} 
+          alt="Verified" 
+          className="w-4 h-4 mr-1"
+          onError={(e) => {
+            e.currentTarget.src = "/badge/VerifiedBADGE (1).png"
+          }}
+        />
+      ) : (
+        <ShieldCheck className="w-4 h-4 mr-1" />
+      )}
+      Verified
+    </Badge>
+  )
 }
 
 // File Upload Component
@@ -236,7 +388,6 @@ function EditEventForm({
   onCancel: () => void
   categories: Category[]
 }) {
-  // Initialize formData with safe defaults for arrays
   const [formData, setFormData] = useState<Event>({
     ...event,
     images: event.images || [],
@@ -253,6 +404,10 @@ function EditEventForm({
     thumbnailImage: event.thumbnailImage || "",
     brochure: event.brochure || "",
     layout: event.layout || "",
+    isVerified: event.isVerified || false,
+    verifiedBadgeImage: event.verifiedBadgeImage || null,
+    verifiedAt: event.verifiedAt || null,
+    verifiedBy: event.verifiedBy || null,
   })
 
   const [uploading, setUploading] = useState(false)
@@ -260,7 +415,6 @@ function EditEventForm({
   const [newVideos, setNewVideos] = useState<File[]>([])
   const [newDocuments, setNewDocuments] = useState<File[]>([])
 
-  // Convert file to base64 for Cloudinary upload
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
@@ -270,7 +424,6 @@ function EditEventForm({
     })
   }
 
-  // Handle image uploads
   const handleImageUpload = async (files: File[]) => {
     setUploading(true)
     try {
@@ -283,7 +436,6 @@ function EditEventForm({
     }
   }
 
-  // Handle video uploads
   const handleVideoUpload = async (files: File[]) => {
     setUploading(true)
     try {
@@ -296,7 +448,6 @@ function EditEventForm({
     }
   }
 
-  // Handle document uploads
   const handleDocumentUpload = async (files: File[]) => {
     setUploading(true)
     try {
@@ -309,7 +460,6 @@ function EditEventForm({
     }
   }
 
-  // Remove image
   const removeImage = (index: number, isNew: boolean = false) => {
     if (isNew) {
       setNewImages(prev => prev.filter((_, i) => i !== index))
@@ -321,7 +471,6 @@ function EditEventForm({
     }
   }
 
-  // Remove video
   const removeVideo = (index: number, isNew: boolean = false) => {
     if (isNew) {
       setNewVideos(prev => prev.filter((_, i) => i !== index))
@@ -333,7 +482,6 @@ function EditEventForm({
     }
   }
 
-  // Remove document
   const removeDocument = (index: number, isNew: boolean = false) => {
     if (isNew) {
       setNewDocuments(prev => prev.filter((_, i) => i !== index))
@@ -350,7 +498,6 @@ function EditEventForm({
     setUploading(true)
 
     try {
-      // Convert all new files to base64
       const imageUploads = Promise.all(newImages.map(fileToBase64))
       const videoUploads = Promise.all(newVideos.map(fileToBase64))
       const documentUploads = Promise.all(newDocuments.map(fileToBase64))
@@ -361,7 +508,6 @@ function EditEventForm({
         documentUploads
       ])
 
-      // Prepare data for API - ensure all arrays have safe defaults
       const updateData = {
         title: formData.title,
         description: formData.description,
@@ -384,7 +530,6 @@ function EditEventForm({
         organizer: formData.organizer,
         ticketPrice: formData.ticketPrice,
         currency: formData.currency,
-        // Combine existing and new files with safe array access
         images: [...(formData.images || []), ...newImageBase64],
         videos: [...(formData.videos || []), ...newVideoBase64],
         documents: [...(formData.documents || []), ...newDocumentBase64],
@@ -392,6 +537,8 @@ function EditEventForm({
         layout: formData.layout,
         bannerImage: formData.bannerImage,
         thumbnailImage: formData.thumbnailImage,
+        isVerified: formData.isVerified,
+        verifiedBadgeImage: formData.verifiedBadgeImage,
       }
 
       console.log("Sending update data:", updateData)
@@ -423,14 +570,12 @@ function EditEventForm({
     }
   }
 
-  // Safe array access for rendering
   const currentImages = formData.images || []
   const currentVideos = formData.videos || []
   const currentDocuments = formData.documents || []
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={onCancel}>
           <ArrowLeft className="h-4 w-4" />
@@ -441,11 +586,9 @@ function EditEventForm({
         </div>
       </div>
 
-      {/* Edit Form */}
       <Card>
         <CardContent className="pt-6">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Basic Information */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Basic Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -521,7 +664,6 @@ function EditEventForm({
               </div>
             </div>
 
-            {/* Date & Time */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Date & Time</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -569,7 +711,6 @@ function EditEventForm({
               </div>
             </div>
 
-            {/* Location & Venue */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Location & Venue</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -597,7 +738,6 @@ function EditEventForm({
               </div>
             </div>
 
-            {/* Event Details */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Event Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -673,7 +813,6 @@ function EditEventForm({
               </div>
             </div>
 
-            {/* Capacity & Pricing */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Capacity & Pricing</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -714,11 +853,9 @@ function EditEventForm({
               </div>
             </div>
 
-            {/* Media Uploads */}
             <div className="space-y-6">
               <h3 className="text-lg font-semibold">Media & Documents</h3>
               
-              {/* Banner Image */}
               <div className="space-y-2">
                 <Label>Banner Image</Label>
                 <div className="flex items-center gap-4">
@@ -741,7 +878,6 @@ function EditEventForm({
                 </div>
               </div>
 
-              {/* Thumbnail Image */}
               <div className="space-y-2">
                 <Label>Thumbnail Image</Label>
                 <div className="flex items-center gap-4">
@@ -764,7 +900,6 @@ function EditEventForm({
                 </div>
               </div>
 
-              {/* Gallery Images */}
               <FileUpload
                 label="Gallery Images"
                 accept="image/*"
@@ -774,7 +909,6 @@ function EditEventForm({
                 onFileRemove={(index) => removeImage(index)}
               />
               
-              {/* New Images Preview */}
               {newImages.length > 0 && (
                 <div className="space-y-2">
                   <Label className="text-sm">New Images to Upload:</Label>
@@ -790,7 +924,6 @@ function EditEventForm({
                 </div>
               )}
 
-              {/* Videos */}
               <FileUpload
                 label="Videos"
                 accept="video/*"
@@ -800,7 +933,6 @@ function EditEventForm({
                 onFileRemove={(index) => removeVideo(index)}
               />
 
-              {/* Documents */}
               <FileUpload
                 label="Documents (Brochure, Layout, etc.)"
                 accept=".pdf,.doc,.docx,.ppt,.pptx"
@@ -810,7 +942,6 @@ function EditEventForm({
                 onFileRemove={(index) => removeDocument(index)}
               />
 
-              {/* Specific Documents */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label>Brochure</Label>
@@ -844,7 +975,6 @@ function EditEventForm({
               </div>
             </div>
 
-            {/* Status & Features */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Status & Features</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -891,12 +1021,22 @@ function EditEventForm({
                       />
                       <Label htmlFor="vip" className="cursor-pointer">VIP Event</Label>
                     </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="verified"
+                        checked={formData.isVerified}
+                        onChange={(e) => setFormData({ ...formData, isVerified: e.target.checked })}
+                        className="rounded border-gray-300"
+                      />
+                      <Label htmlFor="verified" className="cursor-pointer">Verified Event</Label>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Submit Buttons */}
             <div className="flex gap-4 pt-6 border-t">
               <Button 
                 type="submit" 
@@ -937,6 +1077,7 @@ function EventList({
   onVipToggle,
   onDelete,
   onPromote,
+  onVerify,
   onSearchChange,
   onStatusFilterChange,
   onCategoryFilterChange,
@@ -955,6 +1096,7 @@ function EventList({
   onVipToggle: (eventId: string, current: boolean) => void
   onDelete: (eventId: string) => void
   onPromote: (event: Event) => void
+  onVerify: (event: Event) => void
   onSearchChange: (value: string) => void
   onStatusFilterChange: (value: string) => void
   onCategoryFilterChange: (value: string) => void
@@ -985,6 +1127,8 @@ function EventList({
         return filteredEvents.filter((e) => e.featured)
       case "vip":
         return filteredEvents.filter((e) => e.vip)
+      case "verified":
+        return filteredEvents.filter((e) => e.isVerified)
       default:
         return filteredEvents
     }
@@ -1009,13 +1153,16 @@ function EventList({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Event Management</h1>
-
+        <div className="flex items-center gap-2">
+          <Badge className="bg-green-100 text-green-800">
+            <ShieldCheck className="w-4 h-4 mr-1" />
+            {events.filter(e => e.isVerified).length} Verified
+          </Badge>
+        </div>
       </div>
 
-      {/* Search and Filters */}
       <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -1055,18 +1202,21 @@ function EventList({
         </Select>
       </div>
 
-      {/* Events Tabs */}
       <Tabs value={activeTab} onValueChange={onTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="all">All Events ({eventCounts.all})</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-7">
+          <TabsTrigger value="all">All ({eventCounts.all})</TabsTrigger>
           <TabsTrigger value="pending">Pending ({eventCounts.pending})</TabsTrigger>
           <TabsTrigger value="approved">Approved ({eventCounts.approved})</TabsTrigger>
           <TabsTrigger value="flagged">Flagged ({eventCounts.flagged})</TabsTrigger>
           <TabsTrigger value="featured">Featured ({eventCounts.featured})</TabsTrigger>
           <TabsTrigger value="vip">VIP ({eventCounts.vip})</TabsTrigger>
+          <TabsTrigger value="verified">
+            <ShieldCheck className="w-4 h-4 mr-1" />
+            Verified ({eventCounts.verified})
+          </TabsTrigger>
         </TabsList>
 
-        {["all", "pending", "approved", "flagged", "featured", "vip"].map((tab) => (
+        {["all", "pending", "approved", "flagged", "featured", "vip", "verified"].map((tab) => (
           <TabsContent key={tab} value={tab} className="space-y-4">
             {getFilteredEventsByTab(tab).map((event) => (
               <div key={event.id} className="hover:shadow-md transition-shadow border-2 rounded-2xl">
@@ -1092,6 +1242,7 @@ function EventList({
                               <Crown className="w-3 h-3 mr-1" /> VIP
                             </Badge>
                           )}
+                          {event.isVerified && <VerifiedBadge event={event} />}
                         </div>
 
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 mb-3">
@@ -1113,16 +1264,19 @@ function EventList({
                           </div>
                         </div>
 
-                        {/* Additional Info */}
                         <div className="flex items-center gap-4 text-xs text-gray-500">
                           <span>Type: {event.eventType || "In-Person"}</span>
                           <span>Category: {event.category}</span>
                           {event.edition && <span>Edition: {event.edition}</span>}
+                          {event.isVerified && (
+                            <span className="text-green-600 font-semibold">
+                              Verified: {event.verifiedAt ? new Date(event.verifiedAt).toLocaleDateString() : "Recently"}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
 
-                    {/* Actions */}
                     <div className="flex items-center gap-2">
                       <Button
                         variant="ghost"
@@ -1152,6 +1306,19 @@ function EventList({
                           <DropdownMenuItem onClick={() => onVipToggle(event.id, event.vip)}>
                             <Crown className="w-4 h-4 mr-2" />
                             {event.vip ? "Remove VIP" : "Make VIP"}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onVerify(event)}>
+                            {event.isVerified ? (
+                              <>
+                                <ShieldOff className="w-4 h-4 mr-2" />
+                                Remove Verification
+                              </>
+                            ) : (
+                              <>
+                                <ShieldCheck className="w-4 h-4 mr-2" />
+                                Verify Event
+                              </>
+                            )}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => onPromote(event)}>
                             <TrendingUp className="w-4 h-4 mr-2" />
@@ -1192,28 +1359,50 @@ export default function EventManagement() {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [isPromoteDialogOpen, setIsPromoteDialogOpen] = useState(false)
-  const [isAnalyticsDialogOpen, setIsAnalyticsDialogOpen] = useState(false)
+  const [isVerifyDialogOpen, setIsVerifyDialogOpen] = useState(false)
+  const [verifying, setVerifying] = useState(false)
   const [activeTab, setActiveTab] = useState("all")
 
   const router = useRouter()
 
-  // Fetch events from backend
-  useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const res = await fetch("/api/admin/events")
-        const data = await res.json()
-        setEvents(data.events || [])
-      } catch (error) {
-        console.error("Error fetching events:", error)
-      } finally {
-        setLoading(false)
-      }
+  const fetchEvents = async () => {
+    try {
+      console.log("Fetching events from /api/admin/events")
+      const res = await fetch("/api/admin/events")
+      const data = await res.json()
+      
+      // Debug: Check what data is coming from API
+      console.log("Fetched events data:", data)
+      console.log("First event verification status:", data.events?.[0]?.isVerified)
+      console.log("First event badge image:", data.events?.[0]?.verifiedBadgeImage)
+      console.log("Total events:", data.events?.length)
+      
+      // Ensure verification fields exist
+      const eventsWithVerification = data.events?.map((event: any) => ({
+        ...event,
+        isVerified: event.isVerified || false,
+        verifiedAt: event.verifiedAt || null,
+        verifiedBy: event.verifiedBy || null,
+        verifiedBadgeImage: event.verifiedBadgeImage || null,
+      })) || []
+      
+      setEvents(eventsWithVerification)
+    } catch (error) {
+      console.error("Error fetching events:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load events",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
     }
+  }
+
+  useEffect(() => {
     fetchEvents()
   }, [])
 
-  // Fetch categories from backend
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -1236,7 +1425,6 @@ export default function EventManagement() {
     fetchCategories()
   }, [])
 
-  // Handle actions
   const handleStatusChange = async (eventId: string, newStatus: Event["status"]) => {
     try {
       const res = await fetch(`/api/admin/events/${eventId}`, {
@@ -1249,11 +1437,33 @@ export default function EventManagement() {
       
       if (!res.ok) throw new Error(result.error || "Failed to update status")
       
-      // Use the formatted event from the response
-      setEvents((prev) => prev.map((e) => (e.id === eventId ? result.event : e)))
+      // Update the event in state with all fields including verification
+      setEvents((prev) => prev.map((e) => {
+        if (e.id === eventId) {
+          return {
+            ...e,
+            status: newStatus,
+            // Preserve verification fields from result
+            isVerified: result.event?.isVerified || e.isVerified,
+            verifiedBadgeImage: result.event?.verifiedBadgeImage || e.verifiedBadgeImage,
+            verifiedAt: result.event?.verifiedAt || e.verifiedAt,
+            verifiedBy: result.event?.verifiedBy || e.verifiedBy,
+          }
+        }
+        return e
+      }))
+      
+      toast({
+        title: "Status Updated",
+        description: `Event status changed to ${newStatus}`,
+      })
     } catch (error) {
       console.error("Failed to update event status:", error)
-      alert("Failed to update event status")
+      toast({
+        title: "Error",
+        description: "Failed to update event status",
+        variant: "destructive",
+      })
     }
   }
 
@@ -1269,7 +1479,18 @@ export default function EventManagement() {
       
       if (!res.ok) throw new Error("Failed to toggle featured")
       
-      setEvents((prev) => prev.map((e) => (e.id === eventId ? result.event : e)))
+      setEvents((prev) => prev.map((e) => {
+        if (e.id === eventId) {
+          return {
+            ...e,
+            featured: !current,
+            // Preserve verification fields
+            isVerified: result.event?.isVerified || e.isVerified,
+            verifiedBadgeImage: result.event?.verifiedBadgeImage || e.verifiedBadgeImage,
+          }
+        }
+        return e
+      }))
     } catch (error) {
       console.error("Failed to toggle featured:", error)
     }
@@ -1287,9 +1508,71 @@ export default function EventManagement() {
       
       if (!res.ok) throw new Error("Failed to toggle VIP")
       
-      setEvents((prev) => prev.map((e) => (e.id === eventId ? result.event : e)))
+      setEvents((prev) => prev.map((e) => {
+        if (e.id === eventId) {
+          return {
+            ...e,
+            vip: !current,
+            // Preserve verification fields
+            isVerified: result.event?.isVerified || e.isVerified,
+            verifiedBadgeImage: result.event?.verifiedBadgeImage || e.verifiedBadgeImage,
+          }
+        }
+        return e
+      }))
     } catch (error) {
       console.error("Failed to toggle VIP:", error)
+    }
+  }
+
+  const handleVerifyToggle = async (event: Event, verify: boolean, customBadge?: File) => {
+    try {
+      setVerifying(true)
+      
+      const formData = new FormData()
+      formData.append("isVerified", verify.toString())
+      
+      if (customBadge && verify) {
+        formData.append("badgeFile", customBadge)
+      }
+
+      const res = await fetch(`/api/admin/events/${event.id}/verify`, {
+        method: "POST",
+        body: formData,
+      })
+      
+      const result = await res.json()
+      
+      if (!res.ok) throw new Error(result.error || "Failed to update verification")
+      
+      // Update the event in state with all verification fields
+      setEvents(prev => prev.map((e) => 
+        e.id === event.id ? {
+          ...e,
+          isVerified: verify,
+          verifiedAt: verify ? new Date().toISOString() : null,
+          verifiedBy: verify ? result.event?.verifiedBy || "Admin" : null,
+          verifiedBadgeImage: verify ? (result.event?.verifiedBadgeImage || "/badge/VerifiedBADGE (1).png") : null,
+        } : e
+      ))
+      
+      setIsVerifyDialogOpen(false)
+      
+      toast({
+        title: verify ? "Event Verified" : "Verification Removed",
+        description: verify 
+          ? "Event has been marked as verified" 
+          : "Event verification has been removed",
+      })
+    } catch (error) {
+      console.error("Failed to update verification:", error)
+      toast({
+        title: "Error",
+        description: "Failed to update verification status",
+        variant: "destructive",
+      })
+    } finally {
+      setVerifying(false)
     }
   }
 
@@ -1308,9 +1591,18 @@ export default function EventManagement() {
       
       console.log("Delete successful:", result)
       setEvents((prev) => prev.filter((e) => e.id !== eventId))
+      
+      toast({
+        title: "Event Deleted",
+        description: "Event has been deleted successfully",
+      })
     } catch (error) {
       console.error("Failed to delete event:", error)
-      alert(error instanceof Error ? error.message : "Failed to delete event")
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete event",
+        variant: "destructive",
+      })
     }
   }
 
@@ -1323,11 +1615,21 @@ export default function EventManagement() {
     setEvents((prev) => prev.map((e) => (e.id === updatedEvent.id ? updatedEvent : e)))
     setIsEditing(false)
     setSelectedEvent(null)
+    
+    toast({
+      title: "Event Updated",
+      description: "Event details have been saved successfully",
+    })
   }
 
   const handleCancelEdit = () => {
     setIsEditing(false)
     setSelectedEvent(null)
+  }
+
+  const handleVerifyEvent = (event: Event) => {
+    setSelectedEvent(event)
+    setIsVerifyDialogOpen(true)
   }
 
   const eventCounts = {
@@ -1337,6 +1639,7 @@ export default function EventManagement() {
     flagged: events.filter((e) => e.status === "Flagged").length,
     featured: events.filter((e) => e.featured).length,
     vip: events.filter((e) => e.vip).length,
+    verified: events.filter((e) => e.isVerified).length,
   }
 
   if (loading || categoriesLoading)
@@ -1346,7 +1649,6 @@ export default function EventManagement() {
       </div>
     )
 
-  // Show edit form when editing
   if (isEditing && selectedEvent) {
     return (
       <EditEventForm
@@ -1358,29 +1660,43 @@ export default function EventManagement() {
     )
   }
 
-  // Show event list when not editing
   return (
-    <EventList
-      events={events}
-      searchTerm={searchTerm}
-      selectedStatus={selectedStatus}
-      selectedCategory={selectedCategory}
-      activeTab={activeTab}
-      eventCounts={eventCounts}
-      categories={categories}
-      onEdit={handleEditEvent}
-      onStatusChange={handleStatusChange}
-      onFeatureToggle={handleFeatureToggle}
-      onVipToggle={handleVipToggle}
-      onDelete={handleDeleteEvent}
-      onPromote={(event) => {
-        setSelectedEvent(event)
-        setIsPromoteDialogOpen(true)
-      }}
-      onSearchChange={setSearchTerm}
-      onStatusFilterChange={setSelectedStatus}
-      onCategoryFilterChange={setSelectedCategory}
-      onTabChange={setActiveTab}
-    />
+    <>
+      <EventList
+        events={events}
+        searchTerm={searchTerm}
+        selectedStatus={selectedStatus}
+        selectedCategory={selectedCategory}
+        activeTab={activeTab}
+        eventCounts={eventCounts}
+        categories={categories}
+        onEdit={handleEditEvent}
+        onStatusChange={handleStatusChange}
+        onFeatureToggle={handleFeatureToggle}
+        onVipToggle={handleVipToggle}
+        onDelete={handleDeleteEvent}
+        onPromote={(event) => {
+          setSelectedEvent(event)
+          setIsPromoteDialogOpen(true)
+        }}
+        onVerify={handleVerifyEvent}
+        onSearchChange={setSearchTerm}
+        onStatusFilterChange={setSelectedStatus}
+        onCategoryFilterChange={setSelectedCategory}
+        onTabChange={setActiveTab}
+      />
+
+      <VerifyEventDialog
+        event={selectedEvent}
+        open={isVerifyDialogOpen}
+        onOpenChange={setIsVerifyDialogOpen}
+        onVerify={(verify, customBadge) => {
+          if (selectedEvent) {
+            handleVerifyToggle(selectedEvent, verify, customBadge)
+          }
+        }}
+        loading={verifying}
+      />
+    </>
   )
 }

@@ -1456,24 +1456,38 @@ export default function EventsPageContent() {
                             {/* BOTTOM LEFT INFO */}
                             <div className="flex flex-wrap items-center gap-4 text-sm font-semibold text-gray-700">
 
-                              {/* FOLLOWERS */}
-                              <div className="flex items-center gap-1">
-                                <Image
-                                  src="/icons/visiitor_icon.png"
-                                  alt="Follow"
-                                  width={38}
-                                  height={18}
-                                  className="cursor-pointer"
-                                />
-                                {visitorCounts[event.id] ?? 0}
-                              </div>
+          <BookmarkButton eventId={event.id}>
+  <div
+    className="
+      flex items-center
+      border border-gray-300
+      overflow-hidden
+      text-[12px]
+      font-semibold
+      cursor-pointer
+      bg-white
+      hover:shadow-sm
+      transition
+    "
+  >
+    {/* LEFT: Interested */}
+    <div className="flex items-center gap-1 px-2 py-1 text-gray-700 hover:text-orange-600 bg-orange-50">
+      <Image
+        src="/icons/visiitor_icon.png"
+        alt="Interested"
+        width={16}
+        height={16}
+      />
+      <span>Interested</span>
+    </div>
 
-                              {/* SAVE */}
-                              <BookmarkButton eventId={event.id}>
-                                <span className="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md text-xs font-medium">
-                                  Follow
-                                </span>
-                              </BookmarkButton>
+    {/* RIGHT: COUNT */}
+    <div className="px-3 py-1 text-gray-900 bg-white border-l">
+      {visitorCounts[event.id] ?? 0}
+    </div>
+  </div>
+</BookmarkButton>
+
 
 
 

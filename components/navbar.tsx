@@ -439,7 +439,7 @@ export default function Navbar() {
                 <input
                   type="text"
                   placeholder="Search events, venues, speakers..."
-                  className="w-full py-2 pl-4 pr-12 bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white text-black"
+                  className="w-full py-2 pl-4 pr-12 bg-gray-100 rounded-lg focus:outline-none focus:ring-2  focus:bg-white text-black"
                   value={searchQuery}
                   onChange={(e) => handleSearchInput(e.target.value)}
                   onFocus={() => searchQuery.length >= 2 && setShowSearchResults(true)}

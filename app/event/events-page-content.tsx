@@ -85,9 +85,9 @@ function EventVerifiedBadge({ event }: { event: Event }) {
   return (
     <div className="flex items-center gap-1 bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-semibold border border-green-300">
       {event.verifiedBadgeImage ? (
-        <img 
-          src={event.verifiedBadgeImage} 
-          alt="Verified" 
+        <img
+          src={event.verifiedBadgeImage}
+          alt="Verified"
           className="w-4 h-4"
           onError={(e) => {
             e.currentTarget.src = "/badge/VerifiedBADGE (1).png"
@@ -175,6 +175,30 @@ export default function EventsPageContent() {
       return image.url
     }
     return DEFAULT_EVENT_IMAGE
+  }
+
+
+  const handlePageChange = (page: number) => {
+    // Allow first page without login
+    if (page === 1) {
+      setCurrentPage(1)
+      return
+    }
+
+    // Block if not logged in
+    if (!session) {
+      toast({
+        title: "Login required",
+        description: "Please log in to view more events.",
+        variant: "destructive",
+      })
+
+      router.push("/login")
+      return
+    }
+
+    // Logged in → allow pagination
+    setCurrentPage(page)
   }
 
   const fetchEvents = async () => {
@@ -1322,12 +1346,12 @@ export default function EventsPageContent() {
                     <h1 className="font-sans text-[32px] font-extrabold text-gray-600 tracking-tight">
                       {getBannerTitle()}
                     </h1>
-                    {activeTab === "Verified" && (
+                    {/* {activeTab === "Verified" && (
                       <Badge className="bg-green-100 text-green-800 border border-green-300 px-4 py-2">
                         <ShieldCheck className="w-4 h-4 mr-2" />
                         Verified Events Only
                       </Badge>
-                    )}
+                    )} */}
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="text-sm text-gray-600 font-medium">
@@ -1341,7 +1365,7 @@ export default function EventsPageContent() {
                   </div>
                 </div>
               </div>
-              
+
               {/* View Toggle and Results Count */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-8">
                 <span className="text-xs sm:text-sm font-bold text-gray-700">
@@ -1357,171 +1381,200 @@ export default function EventsPageContent() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
                     disabled={currentPage === 1}
                     className="font-bold text-gray-700 border text-xs sm:text-sm"
                   >
                     Previous
                   </Button>
+
                   {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
                     const page = i + 1
                     return (
                       <button
                         key={page}
-                        onClick={() => setCurrentPage(page)}
+                        onClick={() => handlePageChange(page)}
                         className={`w-8 h-8 sm:w-10 sm:h-10 rounded text-xs sm:text-sm font-bold ${currentPage === page
-                          ? "bg-blue-600 text-white shadow"
-                          : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"
+                            ? "bg-blue-600 text-white shadow"
+                            : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"
                           }`}
                       >
                         {page}
                       </button>
                     )
                   })}
+
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                    onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
                     disabled={currentPage === totalPages}
                     className="font-bold text-gray-700 border text-xs sm:text-sm"
                   >
                     Next
                   </Button>
+
                 </div>
               </div>
 
-            {/* Events List - Cards with fixed 460x270 dimensions */}
-<div className="space-y-6">
-  {paginatedEvents.length === 0 ? (
-    <div className="text-center py-12 bg-white rounded-lg sm:rounded-xl shadow">
-      <p className="text-gray-500 text-lg sm:text-xl font-bold mb-4">
-        {activeTab === "Verified" 
-          ? "No verified events found" 
-          : "No events found matching your criteria"}
-      </p>
-      <Button
-        variant="outline"
-        className="mt-4 font-bold text-sm sm:text-base px-4 sm:px-6 py-2 bg-transparent"
-        onClick={clearAllFilters}
-      >
-        Clear All Filters
-      </Button>
-      {activeTab === "Verified" && (
-        <Button
-          variant="default"
-          className="mt-4 ml-4 font-bold text-sm sm:text-base px-4 sm:px-6 py-2 bg-blue-600 hover:bg-blue-700"
-          onClick={() => setActiveTab("All Events")}
-        >
-          View All Events
-        </Button>
-      )}
-    </div>
-  ) : (
-    paginatedEvents.map((event) => (
-      <Link href={`/event/${event.id}`} key={event.id} className="block">
-        <div className="relative bg-white border border-gray-300 rounded-lg overflow-hidden w-full hover:shadow-lg transition-shadow duration-300">
-
-          <div className="flex flex-col md:flex-row">
-
-            {/* LEFT CONTENT */}
-            <div className="flex-1 px-4 sm:px-5 py-4">
-
-              {/* DATE */}
-              <p className="text-xs sm:text-sm font-medium text-gray-600 mb-1">
-                {formatDate(event.timings.startDate)}
-                {event.timings.endDate && <> - {formatDate(event.timings.endDate)}</>}
-                {" "}{formatYear(event.timings.startDate)}
-              </p>
-
-              {/* TITLE WITH VERIFIED BADGE */}
-              <div className="flex items-start justify-between gap-3 mb-1">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-[18px] sm:text-[20px] font-bold text-[#1F5D84] leading-snug">
-                      {event.title}
-                    </h3>
-                    {event.isVerified && <EventVerifiedBadge event={event} />}
+              {/* Events List - Cards with fixed 460x270 dimensions */}
+              <div className="space-y-6">
+                {paginatedEvents.length === 0 ? (
+                  <div className="text-center py-12 bg-white rounded-lg sm:rounded-xl shadow">
+                    <p className="text-gray-500 text-lg sm:text-xl font-bold mb-4">
+                      {activeTab === "Verified"
+                        ? "No verified events found"
+                        : "No events found matching your criteria"}
+                    </p>
+                    <Button
+                      variant="outline"
+                      className="mt-4 font-bold text-sm sm:text-base px-4 sm:px-6 py-2 bg-transparent"
+                      onClick={clearAllFilters}
+                    >
+                      Clear All Filters
+                    </Button>
+                    {activeTab === "Verified" && (
+                      <Button
+                        variant="default"
+                        className="mt-4 ml-4 font-bold text-sm sm:text-base px-4 sm:px-6 py-2 bg-blue-600 hover:bg-blue-700"
+                        onClick={() => setActiveTab("All Events")}
+                      >
+                        View All Events
+                      </Button>
+                    )}
                   </div>
-                </div>
+                ) : (
+                  paginatedEvents.map((event) => (
+                    <Link href={`/event/${event.id}`} key={event.id} className="block">
+                      <div className="relative bg-white border border-gray-300 rounded-lg overflow-hidden w-full hover:shadow-lg transition-shadow duration-300">
+
+                        <div className="flex flex-col md:flex-row">
+
+                          {/* LEFT CONTENT */}
+                          <div className="flex-1 px-4 sm:px-5 py-4">
+
+                            {/* DATE */}
+                            <p className="text-xs sm:text-sm font-medium text-gray-600 mb-1">
+                              {formatDate(event.timings.startDate)}
+                              {event.timings.endDate && <> - {formatDate(event.timings.endDate)}</>}
+                              {" "}{formatYear(event.timings.startDate)}
+                            </p>
+
+                            {/* TITLE WITH VERIFIED BADGE */}
+                            <div className="flex items-start justify-between gap-3 mb-1">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h3 className="text-[18px] sm:text-[20px] font-bold text-[#1F5D84] leading-snug">
+                                    {event.title}
+                                  </h3>
+                                  {event.isVerified && <EventVerifiedBadge event={event} />}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* LOCATION */}
+                            <p className="mb-3 flex items-center text-[14px] font-normal font-sans text-[#212529]">
+                              <MapPin className="w-4 h-4 mr-1 text-[#6C757D]" />
+                              {event.location?.city}, {event.location?.country}
+                            </p>
+
+
+                            <p
+                              className="
+    text-[14px]
+    text-[#5E5E5E]
+    font-normal
+    font-sans
+    leading-relaxed
+    text-left
+    break-words
+    whitespace-normal
+    line-clamp-3
+    mb-4
+    max-w-[95%]
+  "
+                            >
+                              {event.description}
+                            </p>
+
+
+                            {/* CATEGORIES */}
+                            <div className="flex flex-wrap gap-2 mb-5">
+                              {event.categories.slice(0, 3).map((cat, i) => (
+                                <span
+                                  key={i}
+                                  className="
+        bg-[#F8F9FA]
+        text-[#666666]
+        px-2
+        py-1
+        rounded
+        text-[12.25px]
+        font-normal
+        leading-none
+        font-sans
+      "
+                                >
+                                  {cat}
+                                </span>
+                              ))}
+                            </div>
+
+
+                            {/* BOTTOM LEFT INFO */}
+                            <div className="flex flex-wrap items-center gap-4 text-sm font-semibold text-gray-700">
+
+                              {/* FOLLOWERS */}
+                              <div className="flex items-center gap-1">
+                                <Users className="w-4 h-4" />
+                                {visitorCounts[event.id] ?? 0}
+                              </div>
+
+                              {/* SAVE */}
+                              <BookmarkButton
+                                eventId={event.id}
+                                className="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md text-xs"
+                              />
+
+                              {/* FREE / PAID */}
+                              <span
+                                className={`px-3 py-1 rounded-full text-xs font-bold ${event.pricing.general === 0
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-red-100 text-red-800"
+                                  }`}
+                              >
+                                {event.pricing.general === 0 ? "Free Entry" : "Paid Entry"}
+                              </span>
+
+                            </div>
+                          </div>
+
+                          {/* RIGHT IMAGE WITH VERIFIED OVERLAY */}
+                          <div className="w-full md:w-[220px] h-[160px] md:h-auto flex-shrink-0 p-3 relative">
+                            <img
+                              src={getEventImage(event)}
+                              alt={event.title}
+                              className="w-full h-[150px] object-cover rounded-md"
+                            />
+                          </div>
+                        </div>
+
+                        {/* ⭐ RATING + SHARE — FLOATING */}
+                        <div className="absolute bottom-4 right-4 flex items-center gap-4">
+                          <div className="flex items-center gap-1 text-sm font-bold text-gray-800">
+                            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                            {Number.isFinite(event.rating?.average)
+                              ? event.rating.average.toFixed(1)
+                              : "0.0"}
+                          </div>
+                          <ShareButton id={event.id} title={event.title} type="event" />
+                        </div>
+
+                      </div>
+                    </Link>
+                  ))
+                )}
               </div>
-
-              {/* LOCATION */}
-              <p className="text-sm font-medium text-gray-700 mb-3 flex items-center">
-                <MapPin className="w-4 h-4 mr-1 text-gray-500" />
-                {event.location?.city}, {event.location?.country}
-              </p>
-
-              {/* DESCRIPTION */}
-              <p className="text-sm text-gray-600 line-clamp-3 mb-4 max-w-[95%]">
-                {event.description}
-              </p>
-
-              {/* CATEGORIES */}
-              <div className="flex flex-wrap gap-2 mb-5">
-                {event.categories.slice(0, 3).map((cat, i) => (
-                  <span
-                    key={i}
-                    className="bg-gray-100 text-gray-700 px-3 py-1 rounded-md text-xs font-semibold"
-                  >
-                    {cat}
-                  </span>
-                ))}
-              </div>
-
-              {/* BOTTOM LEFT INFO */}
-              <div className="flex flex-wrap items-center gap-4 text-sm font-semibold text-gray-700">
-
-                {/* FOLLOWERS */}
-                <div className="flex items-center gap-1">
-                  <Users className="w-4 h-4" />
-                  {visitorCounts[event.id] ?? 0}
-                </div>
-
-                {/* SAVE */}
-                <BookmarkButton
-                  eventId={event.id}
-                  className="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md text-xs"
-                />
-
-                {/* FREE / PAID */}
-                <span
-                  className={`px-3 py-1 rounded-full text-xs font-bold ${event.pricing.general === 0
-                      ? "bg-green-100 text-green-800"
-                      : "bg-red-100 text-red-800"
-                    }`}
-                >
-                  {event.pricing.general === 0 ? "Free Entry" : "Paid Entry"}
-                </span>
-
-              </div>
-            </div>
-
-            {/* RIGHT IMAGE WITH VERIFIED OVERLAY */}
-            <div className="w-full md:w-[220px] h-[160px] md:h-auto flex-shrink-0 p-3 relative">
-              <img
-                src={getEventImage(event)}
-                alt={event.title}
-                className="w-full h-[150px] object-cover rounded-md"
-              />
-            </div>
-          </div>
-
-          {/* ⭐ RATING + SHARE — FLOATING */}
-          <div className="absolute bottom-4 right-4 flex items-center gap-4">
-            <div className="flex items-center gap-1 text-sm font-bold text-gray-800">
-              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-              {Number.isFinite(event.rating?.average)
-                ? event.rating.average.toFixed(1)
-                : "0.0"}
-            </div>
-            <ShareButton id={event.id} title={event.title} type="event" />
-          </div>
-
-        </div>
-      </Link>
-    ))
-  )}
-</div>
 
               {/* Featured Events - Show verified featured events first */}
               {featuredEvents.length > 0 && (
@@ -1562,69 +1615,69 @@ export default function EventsPageContent() {
                       .sort((a, b) => (b.isVerified ? 1 : 0) - (a.isVerified ? 1 : 0))
                       .slice(currentSlide * 3, currentSlide * 3 + 3)
                       .map((event) => (
-                      <Card
-                        key={event.id}
-                        className="hover:shadow-xl transition-all duration-300 border border-gray-300 rounded-xl overflow-hidden group"
-                      >
-                        <div className="relative aspect-video overflow-hidden">
-                          <img
-                            src={getEventImage(event) || "/placeholder.svg"}
-                            alt={event.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          />
-                          <div className="absolute top-3 right-3 bg-white rounded-full p-2 shadow-lg hover:bg-gray-50 cursor-pointer">
-                            <Heart className="w-5 h-5 text-gray-700" />
+                        <Card
+                          key={event.id}
+                          className="hover:shadow-xl transition-all duration-300 border border-gray-300 rounded-xl overflow-hidden group"
+                        >
+                          <div className="relative aspect-video overflow-hidden">
+                            <img
+                              src={getEventImage(event) || "/placeholder.svg"}
+                              alt={event.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            />
+                            <div className="absolute top-3 right-3 bg-white rounded-full p-2 shadow-lg hover:bg-gray-50 cursor-pointer">
+                              <Heart className="w-5 h-5 text-gray-700" />
+                            </div>
+                            <div className="absolute top-3 left-3 flex space-x-2">
+                              <Badge className="bg-blue-600 text-white text-sm font-bold px-3 py-1.5 shadow-lg">
+                                Featured ✨
+                              </Badge>
+
+                            </div>
                           </div>
-                          <div className="absolute top-3 left-3 flex space-x-2">
-                            <Badge className="bg-blue-600 text-white text-sm font-bold px-3 py-1.5 shadow-lg">
-                              Featured ✨
-                            </Badge>
-                           
-                          </div>
-                        </div>
-                        <CardContent className="p-5">
-                          <div className="flex items-start justify-between mb-2">
-                            <h3 className="text-xl font-black text-gray-900 line-clamp-2 flex-1">{event.title}</h3>
-                            {event.isVerified && event.verifiedBadgeImage && (
-                              <img
-                                src={event.verifiedBadgeImage}
-                                alt="Verified"
-                                className="w-6 h-6 ml-2"
-                                onError={(e) => {
-                                  e.currentTarget.src = "/badge/VerifiedBADGE (1).png"
-                                }}
-                              />
-                            )}
-                          </div>
-                          <div className="flex items-center text-base text-gray-700 mb-2 font-bold">
-                            <MapPin className="w-5 h-5 mr-2 text-blue-600 flex-shrink-0" />
-                            <span className="truncate">{event.location?.city || "Location TBD"}</span>
-                          </div>
-                          <div className="flex items-center text-base text-gray-700 mb-4 font-bold">
-                            <Calendar className="w-5 h-5 mr-2 text-blue-600 flex-shrink-0" />
-                            <span>{formatDate(event.timings.startDate)}</span>
-                          </div>
-                          <div className="flex items-center justify-between mb-5">
-                            <Badge className="bg-blue-100 text-blue-800 text-sm font-bold px-3 py-1.5 border border-blue-200">
-                              {event.categories[0] || "Event"}
-                            </Badge>
-                            <span className="text-lg font-black text-green-700">
-                              ⭐ {Number.isFinite(event.rating?.average) ? event.rating.average.toFixed(1) : "4.5"}
-                            </span>
-                          </div>
-                          <button
-                            className="w-full bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white py-3 px-4 rounded-lg text-base font-bold shadow-lg hover:shadow-xl transition-all duration-300"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              handleVisitClick(event.id, event.title)
-                            }}
-                          >
-                            Visit Event
-                          </button>
-                        </CardContent>
-                      </Card>
-                    ))}
+                          <CardContent className="p-5">
+                            <div className="flex items-start justify-between mb-2">
+                              <h3 className="text-xl font-black text-gray-900 line-clamp-2 flex-1">{event.title}</h3>
+                              {event.isVerified && event.verifiedBadgeImage && (
+                                <img
+                                  src={event.verifiedBadgeImage}
+                                  alt="Verified"
+                                  className="w-6 h-6 ml-2"
+                                  onError={(e) => {
+                                    e.currentTarget.src = "/badge/VerifiedBADGE (1).png"
+                                  }}
+                                />
+                              )}
+                            </div>
+                            <div className="flex items-center text-base text-gray-700 mb-2 font-bold">
+                              <MapPin className="w-5 h-5 mr-2 text-blue-600 flex-shrink-0" />
+                              <span className="truncate">{event.location?.city || "Location TBD"}</span>
+                            </div>
+                            <div className="flex items-center text-base text-gray-700 mb-4 font-bold">
+                              <Calendar className="w-5 h-5 mr-2 text-blue-600 flex-shrink-0" />
+                              <span>{formatDate(event.timings.startDate)}</span>
+                            </div>
+                            <div className="flex items-center justify-between mb-5">
+                              <Badge className="bg-blue-100 text-blue-800 text-sm font-bold px-3 py-1.5 border border-blue-200">
+                                {event.categories[0] || "Event"}
+                              </Badge>
+                              <span className="text-lg font-black text-green-700">
+                                ⭐ {Number.isFinite(event.rating?.average) ? event.rating.average.toFixed(1) : "4.5"}
+                              </span>
+                            </div>
+                            <button
+                              className="w-full bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white py-3 px-4 rounded-lg text-base font-bold shadow-lg hover:shadow-xl transition-all duration-300"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                handleVisitClick(event.id, event.title)
+                              }}
+                            >
+                              Visit Event
+                            </button>
+                          </CardContent>
+                        </Card>
+                      ))}
                   </div>
 
                   <div className="flex justify-center mt-6 space-x-2">
@@ -1659,48 +1712,48 @@ export default function EventsPageContent() {
                     .sort((a, b) => (visitorCounts[b.id] || 0) - (visitorCounts[a.id] || 0))
                     .slice(0, 3)
                     .map((event) => (
-                    <Link key={event.id} href={`/event/${event.id}`} className="group block">
-                      <div className="bg-gradient-to-r from-yellow-100 to-yellow-300 rounded-md p-4 flex gap-4 shadow hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-yellow-200">
-                        {/* IMAGE */}
-                        <div className="w-20 h-20 flex-shrink-0 rounded-sm overflow-hidden border border-white shadow relative">
-                          <img
-                            src={getEventImage(event) || "/placeholder.svg"}
-                            alt={event.title}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                          />
-                        
+                      <Link key={event.id} href={`/event/${event.id}`} className="group block">
+                        <div className="bg-gradient-to-r from-yellow-100 to-yellow-300 rounded-md p-4 flex gap-4 shadow hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-yellow-200">
+                          {/* IMAGE */}
+                          <div className="w-20 h-20 flex-shrink-0 rounded-sm overflow-hidden border border-white shadow relative">
+                            <img
+                              src={getEventImage(event) || "/placeholder.svg"}
+                              alt={event.title}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                            />
+
+                          </div>
+
+                          {/* CONTENT */}
+                          <div className="flex flex-col flex-1 min-w-0">
+                            {/* TITLE — 19.2px system-ui */}
+                            <div className="flex items-start justify-between">
+                              <h3 className="font-sans text-[19.2px] font-semibold text-[#1F5D84] mb-1 line-clamp-2 flex-1">
+                                {event.title}
+                              </h3>
+
+                            </div>
+
+                            {/* EVENT TYPE / CATEGORY — 14px system-ui */}
+                            <p className="font-sans text-[14px] font-medium text-gray-800 mb-2">
+                              {event.categories?.[0] || "International Exhibition"}
+                            </p>
+
+                            {/* DATE — 14px system-ui */}
+                            <div className="flex items-center font-sans text-[14px] font-semibold text-gray-800 mb-1">
+                              <CalendarDays className="w-4 h-4 mr-2 text-gray-700" />
+                              {formatDate(event.timings.startDate)} {formatYear(event.timings.startDate)}
+                            </div>
+
+                            {/* LOCATION — 14px system-ui */}
+                            <div className="flex items-center font-sans text-[14px] font-semibold text-gray-800">
+                              <MapPin className="w-4 h-4 mr-2 text-blue-700" />
+                              {event.location?.city || "Chennai, India"}
+                            </div>
+                          </div>
                         </div>
-
-                        {/* CONTENT */}
-                        <div className="flex flex-col flex-1 min-w-0">
-                          {/* TITLE — 19.2px system-ui */}
-                          <div className="flex items-start justify-between">
-                            <h3 className="font-sans text-[19.2px] font-semibold text-[#1F5D84] mb-1 line-clamp-2 flex-1">
-                              {event.title}
-                            </h3>
-                          
-                          </div>
-
-                          {/* EVENT TYPE / CATEGORY — 14px system-ui */}
-                          <p className="font-sans text-[14px] font-medium text-gray-800 mb-2">
-                            {event.categories?.[0] || "International Exhibition"}
-                          </p>
-
-                          {/* DATE — 14px system-ui */}
-                          <div className="flex items-center font-sans text-[14px] font-semibold text-gray-800 mb-1">
-                            <CalendarDays className="w-4 h-4 mr-2 text-gray-700" />
-                            {formatDate(event.timings.startDate)} {formatYear(event.timings.startDate)}
-                          </div>
-
-                          {/* LOCATION — 14px system-ui */}
-                          <div className="flex items-center font-sans text-[14px] font-semibold text-gray-800">
-                            <MapPin className="w-4 h-4 mr-2 text-blue-700" />
-                            {event.location?.city || "Chennai, India"}
-                          </div>
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
+                      </Link>
+                    ))}
                 </div>
 
                 {/* Mobile View - Horizontal Scroll */}

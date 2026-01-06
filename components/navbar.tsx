@@ -223,7 +223,7 @@ export default function Navbar() {
     const confirmed = window.confirm(
       `You are logged in as '${role}'.\n\nPlease login as an organizer to access this page.\n\nClick OK to logout and login as an organizer, or Cancel to stay logged in.`,
     )
-    
+
     if (confirmed) {
       await signOut({ redirect: false })
       router.push("/organizer-signup")
@@ -368,10 +368,10 @@ export default function Navbar() {
 
               <div className="flex-shrink-0">
                 <span className={`inline-block px-2 py-1 text-xs rounded capitalize ${result.type === 'event' || result.resultType === 'event'
-                    ? 'bg-blue-100 text-blue-800'
-                    : result.type === 'venue' || result.resultType === 'venue'
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-purple-100 text-purple-800'
+                  ? 'bg-blue-100 text-blue-800'
+                  : result.type === 'venue' || result.resultType === 'venue'
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-purple-100 text-purple-800'
                   }`}>
                   {result.type || result.resultType}
                 </span>
@@ -393,7 +393,7 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="bg-white shadow-sm">
+    <nav className="bg-white shadow-[0_4px_12px_rgba(0,0,0,0.12)] sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-20 items-center">
           {/* Left section: Logo and mobile menu button */}
@@ -416,11 +416,18 @@ export default function Navbar() {
                 <Image
                   src="/logo/bizlogo.png"
                   alt="BizTradeFairs.com"
-                  width={160}
-                  height={80}
-                  className="h-auto w-auto max-h-16 md:max-h-20"
+                  width={300}
+                  height={140}
                   priority
+                  className="
+    h-auto
+    w-auto
+    max-h-24
+    md:max-h-28
+    lg:max-h-32
+  "
                 />
+
               </div>
             </Link>
           </div>
@@ -432,7 +439,7 @@ export default function Navbar() {
                 <input
                   type="text"
                   placeholder="Search events, venues, speakers..."
-                  className="w-full py-2 pl-4 pr-12 bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white text-black"
+                  className="w-full py-2 pl-4 pr-12 bg-gray-100 rounded-lg focus:outline-none focus:ring-2  focus:bg-white text-black"
                   value={searchQuery}
                   onChange={(e) => handleSearchInput(e.target.value)}
                   onFocus={() => searchQuery.length >= 2 && setShowSearchResults(true)}
@@ -448,8 +455,8 @@ export default function Navbar() {
                         key={tab}
                         onClick={() => setActiveTab(tab)}
                         className={`flex-1 px-4 py-2 text-sm font-medium capitalize ${activeTab === tab
-                            ? 'text-blue-600 border-b-2 border-blue-600'
-                            : 'text-gray-500 hover:text-gray-700'
+                          ? 'text-blue-600 border-b-2 border-blue-600'
+                          : 'text-gray-500 hover:text-gray-700'
                           }`}
                       >
                         {tab} {tab !== 'all' && `(${searchResults[tab as keyof SearchResults]?.length || 0})`}
@@ -594,8 +601,8 @@ export default function Navbar() {
                       key={tab}
                       onClick={() => setActiveTab(tab)}
                       className={`flex-1 px-4 py-3 text-sm font-medium capitalize ${activeTab === tab
-                          ? 'text-blue-600 border-b-2 border-blue-600'
-                          : 'text-gray-500 hover:text-gray-700'
+                        ? 'text-blue-600 border-b-2 border-blue-600'
+                        : 'text-gray-500 hover:text-gray-700'
                         }`}
                     >
                       {tab} {tab !== 'all' && `(${searchResults[tab as keyof SearchResults]?.length || 0})`}
@@ -613,7 +620,7 @@ export default function Navbar() {
           <div className="lg:hidden pb-4 border-t border-gray-200" ref={mobileMenuRef}>
             <div className="flex flex-col space-y-1 pt-4">
               <Link href="/event">
-                <p 
+                <p
                   onClick={() => setMobileMenuOpen(false)}
                   className="px-4 py-3 text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors"
                 >
@@ -621,20 +628,20 @@ export default function Navbar() {
                 </p>
               </Link>
               <Link href="/speakers">
-                <p 
+                <p
                   onClick={() => setMobileMenuOpen(false)}
                   className="px-4 py-3 text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors"
                 >
                   Speakers
                 </p>
               </Link>
-              <p 
+              <p
                 onClick={handleAddevent}
                 className="px-4 py-3 text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors cursor-pointer"
               >
                 Add Event
               </p>
-              
+
               {/* Auth section in mobile menu */}
               <div className="px-4 py-3 border-t border-gray-200">
                 {session ? (

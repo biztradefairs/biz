@@ -80,6 +80,93 @@ interface ApiResponse {
   events: Event[]
 }
 // Enhanced Verified Badge Component for public display
+function SidebarSection({
+  title,
+  open,
+  onToggle,
+  children,
+}: {
+  title: string
+  open: boolean
+  onToggle: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <div className="border-b border-gray-200">
+      <button
+        onClick={onToggle}
+        className="
+          w-full flex items-center justify-between
+          px-4 py-3
+          text-sm font-semibold
+          text-gray-400
+          hover:text-red-600
+          transition-colors
+        "
+      >
+        <span>{title}</span>
+        <ChevronDown
+          className={`w-4 h-4 transition-transform text-green-700 ${open ? "rotate-180" : ""
+            }`}
+        />
+      </button>
+
+      {open && <div className="pb-2">{children}</div>}
+    </div>
+  )
+}
+
+function SidebarCheckboxRow({
+  label,
+  count,
+  checked,
+  onChange,
+}: {
+  label: string
+  count?: number
+  checked: boolean
+  onChange: () => void
+}) {
+  return (
+    <div
+      onClick={onChange}
+      className={`
+        flex items-center justify-between
+        px-4 py-2 text-sm cursor-pointer
+        rounded-md
+        transition-colors
+        hover:text-red-500
+        ${checked
+          ? "bg-green-50 text-red-500"
+          : "text-gray-800 hover:bg-green-50"
+        }
+      `}
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        <input
+          type="checkbox"
+          checked={checked}
+          readOnly
+          className="w-4 h-4 accent-green-600"
+        />
+        <span
+          className={`truncate ${checked ? "font-semibold" : "font-normal"
+            }`}
+        >
+          {label}
+        </span>
+      </div>
+
+      {typeof count === "number" && (
+        <span className="text-xs text-gray-500">{count}</span>
+      )}
+    </div>
+  )
+}
+
+
+
+
 function EventVerifiedIcon({ event }: { event: Event }) {
   if (!event.isVerified) return null
 
@@ -1062,270 +1149,124 @@ export default function EventsPageContent() {
           {/* Main Grid Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 lg:gap-8 xl:gap-10 2xl:gap-12">
             {/* Left Sidebar - 3 columns on desktop */}
-            <div className="lg:col-span-3 hidden lg:block order-2 lg:order-1">
-              <div className="lg:sticky lg:top-6 self-start">
-                <Card className="border border-gray-300 shadow-lg bg-white rounded-lg sm:rounded-xl">
-                  <CardContent className="p-0">
-                    {/* Calendar Section */}
-                    <div className="border-b border-gray-200">
-                      <button
-                        onClick={() => setCalendarOpen(!calendarOpen)}
-                        className="w-full flex items-center justify-between p-3 sm:p-4 text-left hover:bg-gray-50 rounded-t-lg sm:rounded-t-xl"
-                      >
-                        <span className="text-gray-900 font-bold text-sm sm:text-base">📅 Calendar</span>
-                        <ChevronDown
-                          className={`w-4 h-4 sm:w-5 sm:h-5 text-gray-600 transition-transform ${calendarOpen ? "rotate-180" : ""}`}
-                        />
-                      </button>
-                      {calendarOpen && (
-                        <div className="px-3 sm:px-4 pb-4">
-                          <div className="grid grid-cols-2 gap-2 mb-4">
-                            {[
-                              { label: "Today", value: "today" },
-                              { label: "Tomorrow", value: "tomorrow" },
-                              { label: "This Week", value: "this-week" },
-                              { label: "This Month", value: "this-month" },
-                            ].map((range) => (
-                              <button
-                                key={range.value}
-                                onClick={() => {
-                                  setSelectedDateRange(range.value)
-                                  setSelectedDate(null)
-                                }}
-                                className={`p-2 text-xs text-center rounded border font-bold ${selectedDateRange === range.value
-                                  ? "bg-blue-100 border-blue-600 text-blue-800 font-bold"
-                                  : "border-gray-300 hover:bg-gray-100 text-gray-700"
-                                  }`}
-                              >
-                                {range.label}
-                              </button>
-                            ))}
-                          </div>
+            <div className="lg:col-span-3 hidden lg:block">
+              <div className="sticky top-6">
+                <div className="border border-gray-200 bg-white">
 
-                          <div className="bg-white rounded-lg border border-gray-300 p-3">
-                            <div className="flex items-center justify-between mb-3">
-                              <button onClick={handlePrevMonth} className="p-1 hover:bg-gray-100 rounded">
-                                <ChevronLeft className="w-4 h-4 text-gray-700" />
-                              </button>
-                              <span className="text-sm font-bold text-gray-900">
-                                {currentMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
-                              </span>
-                              <button onClick={handleNextMonth} className="p-1 hover:bg-gray-100 rounded">
-                                <ChevronRight className="w-4 h-4 text-gray-700" />
-                              </button>
-                            </div>
-
-                            <div className="grid grid-cols-7 gap-1 mb-2">
-                              {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => (
-                                <div key={day} className="text-xs font-bold text-gray-600 text-center">
-                                  {day}
-                                </div>
-                              ))}
-                            </div>
-                            <div className="grid grid-cols-7 gap-1">{renderCalendar()}</div>
-                          </div>
-
-                          {selectedDate && (
-                            <div className="mt-3 p-2 bg-blue-50 rounded border border-blue-200">
-                              <p className="text-xs font-medium text-blue-800">
-                                Showing events for {selectedDate.toLocaleDateString()}
-                              </p>
-                              <button
-                                onClick={clearDateFilter}
-                                className="text-xs font-medium text-blue-600 hover:text-blue-800 mt-1"
-                              >
-                                Clear date filter
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Format Section */}
-                    <div className="border-b border-gray-200">
-                      <button
-                        onClick={() => setFormatOpen(!formatOpen)}
-                        className="w-full flex items-center justify-between p-3 sm:p-4 text-left hover:bg-gray-50"
-                      >
-                        <span className="text-gray-900 font-bold text-sm sm:text-base">🎯 Format</span>
-                        <ChevronDown
-                          className={`w-4 h-4 sm:w-5 sm:h-5 text-gray-600 transition-transform ${formatOpen ? "rotate-180" : ""}`}
-                        />
-                      </button>
-
-                      {formatOpen && (
-                        <div className="px-3 sm:px-4 pb-4">
-                          <div className="space-y-2">
-                            <button
-                              onClick={() => setSelectedFormat("All Formats")}
-                              className={`w-full text-left p-2 rounded-lg text-xs sm:text-sm flex justify-between items-center font-bold ${selectedFormat === "All Formats"
-                                ? "bg-blue-100 text-blue-800 border border-blue-300"
-                                : "hover:bg-gray-100 text-gray-700 border border-gray-200"
-                                }`}
-                            >
-                              <span>All Formats</span>
-                            </button>
-
-                            {formats.map((format, index) => (
-                              <button
-                                key={`${format.name}-${index}`}
-                                onClick={() => setSelectedFormat(format.name)}
-                                className={`w-full text-left p-2 rounded-lg text-xs sm:text-sm flex justify-between items-center font-bold ${selectedFormat === format.name
-                                  ? "bg-blue-100 text-blue-800 border border-blue-300"
-                                  : "hover:bg-gray-100 text-gray-700 border border-gray-200"
-                                  }`}
-                              >
-                                <span className="truncate">{format.name}</span>
-                                <span className="text-xs font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded-full ml-2 flex-shrink-0">
-                                  {format.count}
-                                </span>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Location Section */}
-                    <div className="border-b border-gray-200">
-                      <button
-                        onClick={() => setLocationOpen(!locationOpen)}
-                        className="w-full flex items-center justify-between p-3 sm:p-4 text-left hover:bg-gray-50"
-                      >
-                        <span className="text-gray-900 font-bold text-sm sm:text-base">📍 Location</span>
-                        <ChevronDown
-                          className={`w-4 h-4 sm:w-5 sm:h-5 text-gray-600 transition-transform ${locationOpen ? "rotate-180" : ""}`}
-                        />
-                      </button>
-                      {locationOpen && (
-                        <div className="px-3 sm:px-4 pb-4">
-                          <div className="relative mb-3">
-                            <Input
-                              type="text"
-                              placeholder="Search locations..."
-                              value={selectedLocation}
-                              onChange={(e) => setSelectedLocation(e.target.value)}
-                              className="text-xs sm:text-sm pr-8 border border-gray-300 rounded-lg py-2 font-bold"
-                            />
-                            <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
-                          </div>
-                          <div className="space-y-2 max-h-48 sm:max-h-60 overflow-y-auto">
-                            {locations.map((location) => (
-                              <button
-                                key={location.name}
-                                onClick={() => setSelectedLocation(location.name)}
-                                className={`w-full text-left p-2 rounded-lg text-xs sm:text-sm flex justify-between items-center font-bold ${selectedLocation === location.name
-                                  ? "bg-blue-100 text-blue-800 border border-blue-300"
-                                  : "hover:bg-gray-100 text-gray-700 border border-gray-200"
-                                  }`}
-                              >
-                                <span className="truncate">{location.name}</span>
-                                <span className="text-xs font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded-full ml-2 flex-shrink-0">
-                                  {location.count}
-                                </span>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Category Section */}
-                    <div className="border-b border-gray-200">
-                      <button
-                        onClick={() => setCategoryOpen(!categoryOpen)}
-                        className="w-full flex items-center justify-between p-3 sm:p-4 text-left hover:bg-gray-50"
-                      >
-                        <span className="text-gray-900 font-bold text-sm sm:text-base">🏷️ Category</span>
-                        <ChevronDown
-                          className={`w-4 h-4 sm:w-5 sm:h-5 text-gray-600 transition-transform ${categoryOpen ? "rotate-180" : ""}`}
-                        />
-                      </button>
-                      {categoryOpen && (
-                        <div className="px-3 sm:px-4 pb-4">
-                          <div className="relative mb-3">
-                            <Input
-                              type="text"
-                              placeholder="Search for Topics..."
-                              value={categorySearch}
-                              onChange={(e) => setCategorySearch(e.target.value)}
-                              className="text-xs sm:text-sm pr-8 border border-gray-300 rounded-lg py-2 font-bold"
-                            />
-                            <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
-                          </div>
-                          <div className="space-y-3">
-                            {filteredCategories
-                              .slice(0, showAllCategories ? filteredCategories.length : 8)
-                              .map((category) => (
-                                <div key={category.name} className="flex items-center justify-between">
-                                  <div className="flex items-center space-x-2 sm:space-x-3">
-                                    <input
-                                      type="checkbox"
-                                      checked={selectedCategories.includes(category.name)}
-                                      onChange={() => handleCategoryToggle(category.name)}
-                                      className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 border border-gray-300 rounded focus:ring-blue-500"
-                                    />
-                                    <span className="text-xs sm:text-sm font-bold text-gray-800 truncate">
-                                      {category.name}
-                                    </span>
-                                  </div>
-                                  <span className="text-xs font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded-full ml-2 flex-shrink-0">
-                                    {category.count}
-                                  </span>
-                                </div>
-                              ))}
-                          </div>
-                          {filteredCategories.length > 8 && (
-                            <button
-                              onClick={() => setShowAllCategories(!showAllCategories)}
-                              className="w-full mt-3 text-xs sm:text-sm font-bold text-blue-600 hover:text-blue-800"
-                            >
-                              {showAllCategories ? "View Less" : "View All Categories"}
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Verified Events Filter */}
-                    <div className="border-b border-gray-200">
-                      <button
-                        onClick={() => setActiveTab(activeTab === "Verified" ? "All Events" : "Verified")}
-                        className={`w-full flex items-center justify-between p-3 sm:p-4 text-left hover:bg-gray-50 ${activeTab === "Verified" ? "bg-green-50" : ""}`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <ShieldCheck className={`w-4 h-4 sm:w-5 sm:h-5 ${activeTab === "Verified" ? "text-green-600" : "text-gray-900"}`} />
-                          <span className={`font-bold text-sm sm:text-base ${activeTab === "Verified" ? "text-green-700" : "text-gray-900"}`}>
-                            Verified Events
-                          </span>
-                        </div>
-                        <Badge variant={activeTab === "Verified" ? "default" : "secondary"} className="bg-green-100 text-green-800">
-                          {verifiedEvents.length}
-                        </Badge>
-                      </button>
-                    </div>
-
-                    {/* Navigation Links */}
-                    <div className="p-3 sm:p-4 border-b border-gray-200 hover:bg-gray-50 cursor-pointer">
-                      <h3 className="text-red-600 font-bold text-sm sm:text-base mb-1">🔥 Top 100 Events</h3>
-                      <p className="text-gray-600 text-xs sm:text-sm font-bold">Discover and track top events</p>
-                    </div>
-
-                    <div className="p-3 sm:p-4 border-b border-gray-200 hover:bg-gray-50 cursor-pointer">
-                      <h3 className="text-red-600 font-bold text-sm sm:text-base mb-1">🎤 Explore Speaker</h3>
-                      <p className="text-gray-600 text-xs sm:text-sm font-bold">Discover and track top events</p>
-                    </div>
-                    <button
-                      onClick={clearAllFilters}
-                      className="w-full p-3 sm:p-4 text-left hover:bg-gray-50 transition-colors cursor-pointer rounded-b-lg sm:rounded-b-xl"
+                    {/* DATE */}
+                    <SidebarSection
+                      title="📅 Date"
+                      open={calendarOpen}
+                      onToggle={() => setCalendarOpen(!calendarOpen)}
                     >
-                      <h3 className="text-blue-600 font-bold text-sm sm:text-base">All Events</h3>
-                    </button>
-                  </CardContent>
-                </Card>
+                      {[
+                        { label: "Today", value: "today" },
+                        { label: "Tomorrow", value: "tomorrow" },
+                        { label: "This Week", value: "this-week" },
+                        { label: "This Month", value: "this-month" },
+                      ].map((d) => (
+                        <SidebarCheckboxRow
+                          key={d.value}
+                          label={d.label}
+                          checked={selectedDateRange === d.value}
+                          onChange={() => {
+                            setSelectedDateRange(d.value)
+                            setSelectedDate(null)
+                          }}
+                        />
+                      ))}
+                    </SidebarSection>
+
+
+                    {/* FORMAT */}
+                    <SidebarSection
+                      title="🎯 Format"
+                      open={formatOpen}
+                      onToggle={() => setFormatOpen(!formatOpen)}
+                    >
+                      {formats.map((f) => (
+                        <SidebarCheckboxRow
+                          key={f.name}
+                          label={f.name}
+                          count={f.count}
+                          checked={selectedFormat === f.name}
+                          onChange={() => setSelectedFormat(f.name)}
+                        />
+                      ))}
+                    </SidebarSection>
+
+
+                    {/* LOCATION */}
+                    <SidebarSection
+                      title="📍 Location"
+                      open={locationOpen}
+                      onToggle={() => setLocationOpen(!locationOpen)}
+                    >
+                      {locations.map((loc) => (
+                        <SidebarCheckboxRow
+                          key={loc.name}
+                          label={loc.name}
+                          count={loc.count}
+                          checked={selectedLocation === loc.name}
+                          onChange={() => setSelectedLocation(loc.name)}
+                        />
+                      ))}
+                    </SidebarSection>
+
+
+                    {/* CATEGORY */}
+                    <SidebarSection
+                      title="🏷️ Category"
+                      open={categoryOpen}
+                      onToggle={() => setCategoryOpen(!categoryOpen)}
+                    >
+                      {filteredCategories.map((cat) => (
+                        <SidebarCheckboxRow
+                          key={cat.name}
+                          label={cat.name}
+                          count={cat.count}
+                          checked={selectedCategories.includes(cat.name)}
+                          onChange={() => handleCategoryToggle(cat.name)}
+                        />
+                      ))}
+                    </SidebarSection>
+
+
+
+                    {/* ENTRY FEE */}
+                    <SidebarSection
+                      title="💰 Entry Fee"
+                      open={entryFeeOpen}
+                      onToggle={() => setEntryFeeOpen(!entryFeeOpen)}
+                    >
+                      {[
+                        { label: "Free", value: "free" },
+                        { label: "Under ₹1,000", value: "under-1000" },
+                        { label: "₹1,000 – ₹5,000", value: "1000-5000" },
+                        { label: "Above ₹5,000", value: "above-5000" },
+                      ].map((p) => (
+                        <SidebarCheckboxRow
+                          key={p.value}
+                          label={p.label}
+                          checked={priceRange === p.value}
+                          onChange={() => setPriceRange(p.value)}
+                        />
+                      ))}
+                    </SidebarSection>
+
+
+                    {/* CLEAR */}
+                    <div
+                      onClick={clearAllFilters}
+                      className="px-4 py-3 text-sm font-semibold text-blue-600 hover:bg-gray-50 cursor-pointer border-t"
+                    >
+                      Clear all filters
+                    </div>
+
+                   </div>
               </div>
             </div>
+
 
             {/* Main Content Area - 6 columns on desktop */}
             <div className="lg:col-span-6 order-1 lg:order-2 w-full">
@@ -1515,24 +1456,38 @@ export default function EventsPageContent() {
                             {/* BOTTOM LEFT INFO */}
                             <div className="flex flex-wrap items-center gap-4 text-sm font-semibold text-gray-700">
 
-                              {/* FOLLOWERS */}
-                              <div className="flex items-center gap-1">
-                                <Image
-                                  src="/icons/visiitor_icon.png"
-                                  alt="Follow"
-                                  width={38}
-                                  height={18}
-                                  className="cursor-pointer"
-                                />
-                                {visitorCounts[event.id] ?? 0}
-                              </div>
+          <BookmarkButton eventId={event.id}>
+  <div
+    className="
+      flex items-center
+      border border-gray-300
+      overflow-hidden
+      text-[12px]
+      font-semibold
+      cursor-pointer
+      bg-white
+      hover:shadow-sm
+      transition
+    "
+  >
+    {/* LEFT: Interested */}
+    <div className="flex items-center gap-1 px-2 py-1 text-gray-700 hover:text-orange-600 bg-orange-50">
+      <Image
+        src="/icons/visiitor_icon.png"
+        alt="Interested"
+        width={16}
+        height={16}
+      />
+      <span>Interested</span>
+    </div>
 
-                              {/* SAVE */}
-                              <BookmarkButton eventId={event.id}>
-                                <span className="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md text-xs font-medium">
-                                  Follow
-                                </span>
-                              </BookmarkButton>
+    {/* RIGHT: COUNT */}
+    <div className="px-3 py-1 text-gray-900 bg-white border-l">
+      {visitorCounts[event.id] ?? 0}
+    </div>
+  </div>
+</BookmarkButton>
+
 
 
 
@@ -1566,35 +1521,29 @@ export default function EventsPageContent() {
 
                         {/* ⭐ RATING + SHARE — FLOATING */}
                         <div className="absolute bottom-4 right-4 flex items-center gap-4">
-                          <div className="relative w-15 h-10 flex items-center justify-center">
-                            {/* STAR */}
-                            <Image
-                              src="/icons/star_icon.png"
-                              alt="Rating"
-                              width={55}
-                              height={40}
-                            />
+                          <div className="flex items-center gap-2">
+                            {/* STAR ICON */}
+                            <div className="flex items-center gap-2">
+                              {/* STAR ICON WITH RATING */}
+                              <div className="flex items-center gap-2">
+                                {/* STAR ICON ONLY */}
+                                <Image
+                                  src="/icons/star_icon.png"
+                                  alt="Rating"
+                                  width={45}
+                                  height={18}
+                                />
 
-                            {/* RATING NUMBER */}
-                            <span
-                              className="
-      absolute
-      text-[11px]
-      font-extrabold
-      text-white
+                                {/* RATING VALUE */}
+                                <span className="text-sm font-bold text-gray-900">
+                                  {Number.isFinite(event.rating?.average)
+                                    ? event.rating.average.toFixed(1)
+                                    : "0.0"}
+                                </span>
+                              </div>
+                            </div>
 
-
-      px-1.5
-      rounded
-    "
-                            >
-                              {Number.isFinite(event.rating?.average)
-                                ? event.rating.average.toFixed(1)
-                                : "0.0"}
-                            </span>
                           </div>
-
-
                           <ShareButton id={event.id} title={event.title} type="event" >
                             <Image
                               src="/icons/sharing_icon.png"

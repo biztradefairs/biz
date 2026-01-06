@@ -393,7 +393,7 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="bg-white shadow-sm">
+    <nav className="bg-white shadow-[0_4px_12px_rgba(0,0,0,0.12)] sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-20 items-center">
           {/* Left section: Logo and mobile menu button */}
@@ -413,14 +413,21 @@ export default function Navbar() {
             {/* Logo */}
             <Link href="/" className="inline-block">
               <div className="flex items-center">
-                <Image
-                  src="/logo/bizlogo.png"
-                  alt="BizTradeFairs.com"
-                  width={160}
-                  height={80}
-                  className="h-auto w-auto max-h-16 md:max-h-20"
-                  priority
-                />
+             <Image
+  src="/logo/bizlogo.png"
+  alt="BizTradeFairs.com"
+  width={300}
+  height={140}
+  priority
+  className="
+    h-auto
+    w-auto
+    max-h-24
+    md:max-h-28
+    lg:max-h-32
+  "
+/>
+
               </div>
             </Link>
           </div>

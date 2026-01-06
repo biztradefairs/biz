@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import Image from "next/image"
 import {
   Search,
   MapPin,
@@ -79,27 +80,21 @@ interface ApiResponse {
   events: Event[]
 }
 // Enhanced Verified Badge Component for public display
-function EventVerifiedBadge({ event }: { event: Event }) {
+function EventVerifiedIcon({ event }: { event: Event }) {
   if (!event.isVerified) return null
 
   return (
-    <div className="flex items-center gap-1 bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-semibold border border-green-300">
-      {event.verifiedBadgeImage ? (
-        <img
-          src={event.verifiedBadgeImage}
-          alt="Verified"
-          className="w-4 h-4"
-          onError={(e) => {
-            e.currentTarget.src = "/badge/VerifiedBADGE (1).png"
-          }}
-        />
-      ) : (
-        <ShieldCheck className="w-4 h-4" />
-      )}
-      <span>Verified</span>
-    </div>
+    <img
+      src={event.verifiedBadgeImage || "/badge/VerifiedBADGE (1).png"}
+      alt="Verified"
+      className="w-5 h-5"
+      onError={(e) => {
+        e.currentTarget.src = "/badge/VerifiedBADGE (1).png"
+      }}
+    />
   )
 }
+
 export default function EventsPageContent() {
   const [activeTab, setActiveTab] = useState("All Events")
   const [selectedFormat, setSelectedFormat] = useState("All Formats")
@@ -999,11 +994,12 @@ export default function EventsPageContent() {
                 {tab === "Verified" ? (
                   <span className="flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4" />
-                    {tab} ({verifiedEvents.length})
+                    Verified
                   </span>
                 ) : (
                   tab
                 )}
+
               </button>
             ))}
           </div>
@@ -1356,11 +1352,6 @@ export default function EventsPageContent() {
                   <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="text-sm text-gray-600 font-medium">
                       Showing {paginatedEvents.length} of {filteredEvents.length} events
-                      {verifiedEvents.length > 0 && (
-                        <span className="ml-2 text-green-600">
-                          ({verifiedEvents.length} verified)
-                        </span>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -1395,8 +1386,8 @@ export default function EventsPageContent() {
                         key={page}
                         onClick={() => handlePageChange(page)}
                         className={`w-8 h-8 sm:w-10 sm:h-10 rounded text-xs sm:text-sm font-bold ${currentPage === page
-                            ? "bg-blue-600 text-white shadow"
-                            : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"
+                          ? "bg-blue-600 text-white shadow"
+                          : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"
                           }`}
                       >
                         {page}
@@ -1467,7 +1458,7 @@ export default function EventsPageContent() {
                                   <h3 className="text-[18px] sm:text-[20px] font-bold text-[#1F5D84] leading-snug">
                                     {event.title}
                                   </h3>
-                                  {event.isVerified && <EventVerifiedBadge event={event} />}
+                                  <EventVerifiedIcon event={event} />
                                 </div>
                               </div>
                             </div>
@@ -1526,28 +1517,39 @@ export default function EventsPageContent() {
 
                               {/* FOLLOWERS */}
                               <div className="flex items-center gap-1">
-                                <Users className="w-4 h-4" />
+                                <Image
+                                  src="/icons/visiitor_icon.png"
+                                  alt="Follow"
+                                  width={38}
+                                  height={18}
+                                  className="cursor-pointer"
+                                />
                                 {visitorCounts[event.id] ?? 0}
                               </div>
 
                               {/* SAVE */}
-                    <BookmarkButton eventId={event.id}>
-  <span className="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md text-xs font-medium">
-    Follow
-  </span>
-</BookmarkButton>
+                              <BookmarkButton eventId={event.id}>
+                                <span className="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md text-xs font-medium">
+                                  Follow
+                                </span>
+                              </BookmarkButton>
 
 
 
                               {/* FREE / PAID */}
-                              <span
-                                className={`px-3 py-1 rounded-full text-xs font-bold ${event.pricing.general === 0
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-red-100 text-red-800"
-                                  }`}
-                              >
-                                {event.pricing.general === 0 ? "Free Entry" : "Paid Entry"}
-                              </span>
+                              <div className="flex items-center gap-1">
+                                <Image
+                                  src="/icons/ticket_icon.png"
+                                  alt="Ticket"
+                                  width={38}
+                                  height={18}
+                                />
+                                <span className="text-sm font-medium">
+                                  {event.pricing.general === 0 ? "Free Entry" : "Paid Entry"}
+                                </span>
+                              </div>
+
+
 
                             </div>
                           </div>
@@ -1564,13 +1566,44 @@ export default function EventsPageContent() {
 
                         {/* ⭐ RATING + SHARE — FLOATING */}
                         <div className="absolute bottom-4 right-4 flex items-center gap-4">
-                          <div className="flex items-center gap-1 text-sm font-bold text-gray-800">
-                            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                            {Number.isFinite(event.rating?.average)
-                              ? event.rating.average.toFixed(1)
-                              : "0.0"}
+                          <div className="relative w-15 h-10 flex items-center justify-center">
+                            {/* STAR */}
+                            <Image
+                              src="/icons/star_icon.png"
+                              alt="Rating"
+                              width={55}
+                              height={40}
+                            />
+
+                            {/* RATING NUMBER */}
+                            <span
+                              className="
+      absolute
+      text-[11px]
+      font-extrabold
+      text-white
+
+
+      px-1.5
+      rounded
+    "
+                            >
+                              {Number.isFinite(event.rating?.average)
+                                ? event.rating.average.toFixed(1)
+                                : "0.0"}
+                            </span>
                           </div>
-                          <ShareButton id={event.id} title={event.title} type="event" />
+
+
+                          <ShareButton id={event.id} title={event.title} type="event" >
+                            <Image
+                              src="/icons/sharing_icon.png"
+                              alt="Share"
+                              width={23}
+                              height={18}
+                              className="cursor-pointer"
+                            />
+                          </ShareButton>
                         </div>
 
                       </div>
@@ -1587,9 +1620,8 @@ export default function EventsPageContent() {
                       ✨ Featured Events
                     </h2>
                     <div className="flex items-center gap-2">
-                      <Badge className="bg-green-100 text-green-800">
-                        {featuredEvents.filter(e => e.isVerified).length} Verified
-                      </Badge>
+                      <ShieldCheck className="w-4 h-4 text-green-600" />
+
                       <div className="flex items-center space-x-2">
                         <Button
                           variant="outline"

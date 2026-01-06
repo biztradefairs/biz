@@ -1,5 +1,6 @@
 "use client"
 
+import { ReactNode } from "react"
 import { Button } from "@/components/ui/button"
 import { Share2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
@@ -7,11 +8,18 @@ import { useToast } from "@/hooks/use-toast"
 interface ShareButtonProps {
   id: string
   title: string
-  type: 'venue' | 'event' | 'speaker'
+  type: "event" | "blog"
+  children?: ReactNode
   className?: string
 }
 
-export function ShareButton({ id, title, type, className = "" }: ShareButtonProps) {
+export function ShareButton({
+  id,
+  title,
+  type,
+  children,
+  className = "",
+}: ShareButtonProps) {
   const { toast } = useToast()
 
   const handleShare = async (e: React.MouseEvent) => {
@@ -23,7 +31,7 @@ export function ShareButton({ id, title, type, className = "" }: ShareButtonProp
     if (navigator.share) {
       try {
         await navigator.share({
-          title: title,
+          title,
           text: `Check out this ${type}!`,
           url: shareUrl,
         })
@@ -49,12 +57,12 @@ export function ShareButton({ id, title, type, className = "" }: ShareButtonProp
 
   return (
     <Button
-      variant="outline"
-      size="sm"
+      variant="ghost"
+      size="icon"
       onClick={handleShare}
       className={`hover:bg-gray-100 ${className}`}
     >
-      <Share2 className="w-4 h-4" />
+      {children ?? <Share2 className="w-4 h-4" />}
     </Button>
   )
 }

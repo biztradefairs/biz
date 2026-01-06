@@ -51,7 +51,7 @@ export function BookmarkButton({
     }
 
     if (!session?.user?.id) {
-      alert("Please log in to save events")
+      alert("Please log in to Follow this event")
       router.push("/login")
       return
     }

@@ -1531,10 +1531,13 @@ export default function EventsPageContent() {
                               </div>
 
                               {/* SAVE */}
-                              <BookmarkButton
-                                eventId={event.id}
-                                className="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md text-xs"
-                              />
+                    <BookmarkButton eventId={event.id}>
+  <span className="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md text-xs font-medium">
+    Follow
+  </span>
+</BookmarkButton>
+
+
 
                               {/* FREE / PAID */}
                               <span

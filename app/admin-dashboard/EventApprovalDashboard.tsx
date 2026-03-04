@@ -59,7 +59,7 @@ import {
 } from "@/components/ui/pagination"
 import { EventStatusBadge } from "../organizer-dashboard/EventStatusBadge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import EventDetailsPanel from "./EventDetailsModal" // Changed from EventDetailsModal
+import EventDetailsPanel from "./EventDetailsModal"
 
 interface Event {
   id: string
@@ -196,10 +196,17 @@ export default function EventApprovalDashboard() {
     }
   }
 
-  // Add view event function
+  // Fixed view event function with debugging
   const handleViewEvent = (eventId: string) => {
+    console.log("View button clicked for event ID:", eventId)
     setSelectedEventForView(eventId)
     setIsViewPanelOpen(true)
+  }
+
+  const handleClosePanel = () => {
+    console.log("Closing panel")
+    setIsViewPanelOpen(false)
+    setSelectedEventForView(null)
   }
 
   const handleApprove = async (eventId: string) => {
@@ -649,19 +656,20 @@ export default function EventApprovalDashboard() {
         </CardContent>
       </Card>
 
-      {/* Event Details Panel (inline, not modal) */}
-      <EventDetailsPanel
-        eventId={selectedEventForView}
-        isOpen={isViewPanelOpen}
-        onClose={() => {
-          setIsViewPanelOpen(false)
-          setSelectedEventForView(null)
-        }}
-        onActionComplete={() => {
-          fetchEvents()
-          fetchStats()
-        }}
-      />
+      {/* Event Details Panel - Fixed with conditional rendering */}
+      {isViewPanelOpen && selectedEventForView && (
+        <EventDetailsPanel
+          key={selectedEventForView}
+          eventId={selectedEventForView}
+          isOpen={isViewPanelOpen}
+          onClose={handleClosePanel}
+          onActionComplete={() => {
+            console.log("Action completed, refreshing data")
+            fetchEvents()
+            fetchStats()
+          }}
+        />
+      )}
 
       {/* Reject Confirmation Dialog */}
       <AlertDialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
@@ -869,11 +877,14 @@ function EventTable({
               
               <TableCell>
                 <div className="flex flex-col sm:flex-row gap-2 justify-end">
-                  {/* View Button */}
+                  {/* View Button - Fixed with console log */}
                   <Button 
                     size="sm" 
                     variant="outline"
-                    onClick={() => handleViewEvent(event.id)}
+                    onClick={() => {
+                      console.log("View button clicked for event:", event.id)
+                      handleViewEvent(event.id)
+                    }}
                     className="w-full sm:w-auto"
                   >
                     <Eye className="w-4 h-4 mr-1" />

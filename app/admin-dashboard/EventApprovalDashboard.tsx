@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { 
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -24,15 +24,15 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
-import { 
-  Eye, 
-  Check, 
-  X, 
-  Calendar, 
-  User, 
-  MapPin, 
-  Search, 
-  Loader2, 
+import {
+  Eye,
+  Check,
+  X,
+  Calendar,
+  User,
+  MapPin,
+  Search,
+  Loader2,
   Filter,
   Clock,
   IndianRupee,
@@ -61,6 +61,8 @@ import { EventStatusBadge } from "../organizer-dashboard/EventStatusBadge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import EventDetailsPanel from "./EventDetailsModal"
 
+
+
 interface Event {
   id: string
   title: string
@@ -82,6 +84,8 @@ interface Event {
     company: string
     phone: string
   }
+
+
   ticketTypes: Array<{
     id: string
     name: string
@@ -106,6 +110,12 @@ interface Event {
     name: string
     email: string
   }
+}
+interface EventDetailsPanelProps {
+  eventId: string | null
+  isOpen: boolean
+  onClose: () => void
+  onActionComplete?: () => void
 }
 
 type TabType = "pending" | "rejected" | "approved"
@@ -151,7 +161,7 @@ export default function EventApprovalDashboard() {
     try {
       setLoading(true)
       let endpoint = ""
-      
+
       if (activeTab === "pending") {
         endpoint = `/api/admin/events/pending?page=${page}&limit=10&search=${search}`
       } else if (activeTab === "rejected") {
@@ -162,7 +172,7 @@ export default function EventApprovalDashboard() {
 
       const response = await fetch(endpoint)
       const data = await response.json()
-      
+
       if (data.success) {
         setEvents(data.events)
         setTotalPages(data.pagination.totalPages)
@@ -183,6 +193,19 @@ export default function EventApprovalDashboard() {
       setLoading(false)
     }
   }
+  useEffect(() => {
+    // Store events in window for fallback in modal
+    if (typeof window !== 'undefined' && events.length > 0) {
+      (window as any).__parentEventData = events;
+
+      // Also store in localStorage as backup
+      try {
+        localStorage.setItem('pendingEvents', JSON.stringify(events));
+      } catch (e) {
+        console.error("Failed to cache events:", e);
+      }
+    }
+  }, [events]);
 
   const fetchStats = async () => {
     try {
@@ -255,10 +278,10 @@ export default function EventApprovalDashboard() {
       const response = await fetch("/api/admin/events/approve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          eventId: selectedEvent.id, 
+        body: JSON.stringify({
+          eventId: selectedEvent.id,
           action: "reject",
-          reason: rejectReason 
+          reason: rejectReason
         })
       })
 
@@ -484,7 +507,7 @@ export default function EventApprovalDashboard() {
             </div>
           </div>
         </CardHeader>
-        
+
         <CardContent>
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabType)} className="w-full">
             <TabsList className="grid w-full grid-cols-3">
@@ -617,7 +640,7 @@ export default function EventApprovalDashboard() {
                       className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                     />
                   </PaginationItem>
-                  
+
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                     let pageNum
                     if (totalPages <= 5) {
@@ -629,7 +652,7 @@ export default function EventApprovalDashboard() {
                     } else {
                       pageNum = page - 2 + i
                     }
-                    
+
                     return (
                       <PaginationItem key={pageNum}>
                         <PaginationLink
@@ -642,7 +665,7 @@ export default function EventApprovalDashboard() {
                       </PaginationItem>
                     )
                   })}
-                  
+
                   <PaginationItem>
                     <PaginationNext
                       onClick={() => setPage(Math.min(totalPages, page + 1))}
@@ -681,7 +704,7 @@ export default function EventApprovalDashboard() {
               This will mark the event as rejected and notify the organizer.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          
+
           <div className="space-y-4">
             <div className="p-3 bg-gray-50 rounded-md">
               <h4 className="font-medium mb-1">Rejection Reason (Required):</h4>
@@ -699,7 +722,7 @@ export default function EventApprovalDashboard() {
           </div>
 
           <AlertDialogFooter>
-            <AlertDialogCancel 
+            <AlertDialogCancel
               onClick={() => {
                 setRejectReason("")
                 setSelectedEvent(null)
@@ -785,7 +808,7 @@ function EventTable({
                   </div>
                 </div>
               </TableCell>
-              
+
               <TableCell>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
@@ -808,7 +831,7 @@ function EventTable({
                   )}
                 </div>
               </TableCell>
-              
+
               <TableCell>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
@@ -828,7 +851,7 @@ function EventTable({
                   </div>
                 </div>
               </TableCell>
-              
+
               <TableCell>
                 <div className="space-y-1">
                   <div className="text-sm">
@@ -850,7 +873,7 @@ function EventTable({
                   </div>
                 </div>
               </TableCell>
-              
+
               <TableCell>
                 <div className="space-y-1">
                   <div className="text-sm text-gray-500">
@@ -866,7 +889,7 @@ function EventTable({
                   )}
                 </div>
               </TableCell>
-              
+
               {activeTab === "rejected" && (
                 <TableCell>
                   <div className="text-sm text-gray-600 line-clamp-2">
@@ -874,12 +897,12 @@ function EventTable({
                   </div>
                 </TableCell>
               )}
-              
+
               <TableCell>
                 <div className="flex flex-col sm:flex-row gap-2 justify-end">
                   {/* View Button - Fixed with console log */}
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     variant="outline"
                     onClick={() => {
                       console.log("View button clicked for event:", event.id)
@@ -890,11 +913,11 @@ function EventTable({
                     <Eye className="w-4 h-4 mr-1" />
                     View
                   </Button>
-                  
+
                   {activeTab === "pending" && (
                     <>
-                      <Button 
-                        size="sm" 
+                      <Button
+                        size="sm"
                         variant="default"
                         onClick={() => handleApprove(event.id)}
                         disabled={approving === event.id}
@@ -907,9 +930,9 @@ function EventTable({
                         )}
                         Approve
                       </Button>
-                      
-                      <Button 
-                        size="sm" 
+
+                      <Button
+                        size="sm"
                         variant="destructive"
                         onClick={() => openRejectDialog(event)}
                         disabled={approving === event.id}
@@ -920,10 +943,10 @@ function EventTable({
                       </Button>
                     </>
                   )}
-                  
+
                   {activeTab === "rejected" && (
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       variant="default"
                       onClick={() => handleReapprove(event.id)}
                       disabled={approving === event.id}
@@ -945,4 +968,4 @@ function EventTable({
       </Table>
     </div>
   )
-}
+}  

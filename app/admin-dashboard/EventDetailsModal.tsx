@@ -24,17 +24,11 @@ import {
   Image as ImageIcon,
   Loader2,
   AlertCircle,
-  XCircle
+  XCircle,
+  WifiOff
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { EventStatusBadge } from "../organizer-dashboard/EventStatusBadge"
-
-interface EventDetailsPanelProps {
-  eventId: string | null
-  isOpen: boolean
-  onClose: () => void
-  onActionComplete?: () => void
-}
 
 interface Event {
   id: string
@@ -87,6 +81,20 @@ interface Event {
   }
 }
 
+interface EventDetailsPanelProps {
+  eventId: string | null
+  isOpen: boolean
+  onClose: () => void
+  onActionComplete?: () => void
+}
+
+// Add this type declaration
+declare global {
+  interface Window {
+    __parentEventData?: Event[];
+  }
+}
+
 export default function EventDetailsPanel({ 
   eventId, 
   isOpen, 
@@ -95,13 +103,40 @@ export default function EventDetailsPanel({
 }: EventDetailsPanelProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [errorDetails, setErrorDetails] = useState<string | null>(null)
   const [event, setEvent] = useState<Event | null>(null)
   const [activeImageIndex, setActiveImageIndex] = useState(0)
+  const [usingFallback, setUsingFallback] = useState(false)
   const { toast } = useToast()
+
+  // Try to get event from parent component data as fallback
+  const getEventFromParentData = (id: string): Event | null => {
+    try {
+      // Check if we have access to the parent component's events data
+      if (typeof window !== 'undefined' && window.__parentEventData) {
+        const found = window.__parentEventData.find(e => e.id === id)
+        if (found) return found
+      }
+      
+      // Try to get from localStorage if we stored it
+      const cachedEvents = localStorage.getItem('pendingEvents')
+      if (cachedEvents) {
+        const events = JSON.parse(cachedEvents) as Event[]
+        const found = events.find((e: Event) => e.id === id)
+        if (found) return found
+      }
+      
+      return null
+    } catch (error) {
+      console.error("Error getting event from parent data:", error)
+      return null
+    }
+  }
 
   useEffect(() => {
     if (eventId && isOpen) {
       console.log("Fetching event details for ID:", eventId)
+      console.log("Environment:", process.env.NODE_ENV)
       fetchEventDetails()
     }
   }, [eventId, isOpen])
@@ -112,14 +147,80 @@ export default function EventDetailsPanel({
     try {
       setLoading(true)
       setError(null)
+      setErrorDetails(null)
+      setUsingFallback(false)
       
-      console.log("Making API call to:", `/api/admin/events/${eventId}`)
+      const apiUrl = `/api/admin/events/${eventId}`
+      console.log("Making API call to:", apiUrl)
       
-      const response = await fetch(`/api/admin/events/${eventId}`)
+      const response = await fetch(apiUrl)
       console.log("API Response status:", response.status)
+      console.log("API Response headers:", Object.fromEntries(response.headers.entries()))
       
-      const data = await response.json()
-      console.log("API Response data:", data)
+      // Check if response is OK
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type')
+        console.log("Content-Type:", contentType)
+        
+        if (contentType && contentType.includes('text/html')) {
+          // This is an HTML error page
+          const htmlText = await response.text()
+          console.error("Received HTML instead of JSON:", htmlText.substring(0, 200) + "...")
+          
+          // Try to use fallback data
+          const fallbackEvent = getEventFromParentData(eventId)
+          if (fallbackEvent) {
+            console.log("Using fallback event data from parent:", fallbackEvent)
+            setEvent(fallbackEvent)
+            setUsingFallback(true)
+            setLoading(false)
+            
+            toast({
+              title: "Limited View Mode",
+              description: "Using cached event data. Some details may not be available.",
+              variant: "default",
+            })
+            return
+          }
+          
+          throw new Error(`API returned ${response.status} HTML page. The endpoint may not exist in production.`)
+        }
+        
+        // Try to parse error as JSON
+        try {
+          const errorData = await response.json()
+          throw new Error(errorData.error || `API error: ${response.status}`)
+        } catch {
+          throw new Error(`API error: ${response.status} ${response.statusText}`)
+        }
+      }
+      
+      // Try to parse JSON response
+      let data
+      try {
+        data = await response.json()
+        console.log("API Response data:", data)
+      } catch (parseError) {
+        console.error("Failed to parse JSON response:", parseError)
+        
+        // Try to use fallback data
+        const fallbackEvent = getEventFromParentData(eventId)
+        if (fallbackEvent) {
+          console.log("Using fallback event data from parent:", fallbackEvent)
+          setEvent(fallbackEvent)
+          setUsingFallback(true)
+          setLoading(false)
+          
+          toast({
+            title: "Limited View Mode",
+            description: "Using cached event data. Some details may not be available.",
+            variant: "default",
+          })
+          return
+        }
+        
+        throw new Error("Invalid JSON response from server")
+      }
       
       if (data.success) {
         // Check if the API returns an array or a single event
@@ -131,7 +232,16 @@ export default function EventDetailsPanel({
             setEvent(foundEvent)
           } else {
             console.error("Event not found in array")
-            setError("Event not found")
+            
+            // Try to use fallback data
+            const fallbackEvent = getEventFromParentData(eventId)
+            if (fallbackEvent) {
+              console.log("Using fallback event data from parent:", fallbackEvent)
+              setEvent(fallbackEvent)
+              setUsingFallback(true)
+            } else {
+              setError("Event not found")
+            }
           }
         } else if (data.event) {
           // If it returns a single event object
@@ -139,25 +249,61 @@ export default function EventDetailsPanel({
           setEvent(data.event)
         } else {
           console.error("Unexpected API response format:", data)
-          setError("Unexpected API response format")
+          
+          // Try to use fallback data
+          const fallbackEvent = getEventFromParentData(eventId)
+          if (fallbackEvent) {
+            console.log("Using fallback event data from parent:", fallbackEvent)
+            setEvent(fallbackEvent)
+            setUsingFallback(true)
+          } else {
+            setError("Unexpected API response format")
+          }
         }
       } else {
         console.error("Failed to fetch event details:", data.error)
-        setError(data.error || "Failed to fetch event details")
-        toast({
-          title: "Error",
-          description: data.error || "Failed to fetch event details",
-          variant: "destructive",
-        })
+        
+        // Try to use fallback data
+        const fallbackEvent = getEventFromParentData(eventId)
+        if (fallbackEvent) {
+          console.log("Using fallback event data from parent:", fallbackEvent)
+          setEvent(fallbackEvent)
+          setUsingFallback(true)
+          
+          toast({
+            title: "Limited View Mode",
+            description: "Using cached event data. Some details may not be available.",
+            variant: "default",
+          })
+        } else {
+          setError(data.error || "Failed to fetch event details")
+        }
       }
     } catch (error) {
       console.error("Failed to fetch event details:", error)
-      setError("Failed to fetch event details. Please check your connection.")
-      toast({
-        title: "Error",
-        description: "Failed to fetch event details",
-        variant: "destructive",
-      })
+      
+      // Try to use fallback data as last resort
+      const fallbackEvent = getEventFromParentData(eventId)
+      if (fallbackEvent) {
+        console.log("Using fallback event data from parent after error:", fallbackEvent)
+        setEvent(fallbackEvent)
+        setUsingFallback(true)
+        
+        toast({
+          title: "Limited View Mode",
+          description: "Using cached event data. Some details may not be available.",
+          variant: "default",
+        })
+      } else {
+        setError("Failed to fetch event details")
+        setErrorDetails(error instanceof Error ? error.message : String(error))
+        
+        toast({
+          title: "Error",
+          description: "Failed to fetch event details. Please try again.",
+          variant: "destructive",
+        })
+      }
     } finally {
       setLoading(false)
     }
@@ -250,11 +396,21 @@ export default function EventDetailsPanel({
         ) : error ? (
           <div className="flex flex-col items-center justify-center h-64">
             <div className="bg-red-100 p-3 rounded-full mb-4">
-              <XCircle className="w-6 h-6 text-red-600" />
+              <WifiOff className="w-6 h-6 text-red-600" />
             </div>
-            <p className="text-red-600 font-medium mb-2">Error Loading Event</p>
-            <p className="text-gray-500 text-sm mb-4">{error}</p>
+            <p className="text-red-600 font-medium mb-2">Connection Error</p>
+            <p className="text-gray-500 text-sm mb-4 text-center max-w-md">
+              {error}
+            </p>
+            {errorDetails && (
+              <p className="text-gray-400 text-xs mb-4 max-w-md text-center">
+                Details: {errorDetails}
+              </p>
+            )}
             <p className="text-gray-400 text-xs mb-4">Event ID: {eventId}</p>
+            <p className="text-amber-600 text-sm mb-4 text-center max-w-md">
+              ⚠️ This might be a production deployment issue. The API endpoint may not be available.
+            </p>
             <div className="flex gap-3">
               <Button 
                 variant="outline" 
@@ -272,6 +428,17 @@ export default function EventDetailsPanel({
           </div>
         ) : event ? (
           <div className="mt-6 space-y-6">
+            {usingFallback && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5 text-amber-600" />
+                  <p className="text-amber-800 text-sm">
+                    Showing cached data. Some details may not be available.
+                  </p>
+                </div>
+              </div>
+            )}
+            
             {/* Event Images */}
             {event.images && event.images.length > 0 ? (
               <div className="space-y-2">

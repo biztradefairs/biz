@@ -3,9 +3,6 @@ import { prisma } from "@/lib/prisma"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth-options"
 import { v2 as cloudinary } from 'cloudinary'
-import { writeFile } from "fs/promises"
-import path from "path"
-import fs from "fs"
 
 // Configure Cloudinary
 cloudinary.config({
@@ -15,7 +12,7 @@ cloudinary.config({
 })
 
 // Helper function to upload files to Cloudinary with timeout
-async function uploadToCloudinary(file: File, folder: string = 'events') {
+async function uploadToCloudinary(file: File, folder: string = 'event-badges') {
   try {
     // Convert File to buffer
     const bytes = await file.arrayBuffer()
@@ -40,40 +37,6 @@ async function uploadToCloudinary(file: File, folder: string = 'events') {
   } catch (error) {
     console.error('Cloudinary upload error:', error)
     throw new Error('Failed to upload file to Cloudinary')
-  }
-}
-
-// Helper function to parse category input
-function parseCategory(category: any): string[] {
-  if (Array.isArray(category)) {
-    return category.filter(Boolean)
-  }
-  if (typeof category === 'string') {
-    return category.split(',').map((cat: string) => cat.trim()).filter(Boolean)
-  }
-  return []
-}
-
-// Helper function to parse tags
-function parseTags(tags: any): string[] {
-  if (Array.isArray(tags)) {
-    return tags.filter(Boolean)
-  }
-  if (typeof tags === 'string') {
-    return tags.split(',').map((tag: string) => tag.trim()).filter(Boolean)
-  }
-  return []
-}
-
-// Helper function to check if string is base64
-function isBase64(str: string): boolean {
-  if (typeof str !== 'string') return false
-  if (str.startsWith('http')) return false
-  if (str.startsWith('data:')) return true
-  try {
-    return btoa(atob(str)) === str
-  } catch (err) {
-    return false
   }
 }
 
@@ -177,12 +140,6 @@ export async function GET(request: Request) {
   }
 }
 
-// Ensure badges directory exists
-const badgesDir = path.join(process.cwd(), 'public', 'badges')
-if (!fs.existsSync(badgesDir)) {
-  fs.mkdirSync(badgesDir, { recursive: true })
-}
-
 // ✅ PATCH Handler - Update event status
 export async function PATCH(
   request: Request,
@@ -235,24 +192,6 @@ export async function PATCH(
       }
     })
 
-    // Log the admin action (if you have AdminLog model)
-    // await prisma.adminLog.create({
-    //   data: {
-    //     adminId: session.user.id,
-    //     adminType: session.user.role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "SUB_ADMIN",
-    //     action: "EVENT_STATUS_UPDATED",
-    //     resource: "EVENT",
-    //     resourceId: id,
-    //     details: {
-    //       title: updatedEvent.title,
-    //       previousStatus: existingEvent.status,
-    //       newStatus: status
-    //     },
-    //     ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
-    //     userAgent: request.headers.get('user-agent') || 'unknown'
-    //   }
-    // })
-
     return NextResponse.json({
       message: "Event status updated successfully",
       event: updatedEvent
@@ -266,7 +205,7 @@ export async function PATCH(
   }
 }
 
-// ✅ POST Handler - Toggle verification (only one POST handler)
+// ✅ POST Handler - Toggle verification (Cloudinary only - no filesystem operations)
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -329,7 +268,7 @@ export async function POST(
 
     // Delete old badge from Cloudinary if it exists and is not the default
     if (currentEvent?.verifiedBadgeImage && 
-        currentEvent.verifiedBadgeImage !== "/badge/VerifiedBADGE (1).png" &&
+        !currentEvent.verifiedBadgeImage.includes('/badge/') && // Check if it's a custom badge (not default)
         !isVerified) {
       try {
         // Extract public_id from Cloudinary URL
@@ -342,7 +281,7 @@ export async function POST(
           // Get folder from URL if available
           const folderIndex = parts.indexOf('event-badges')
           let fullPublicId = publicId
-          if (folderIndex !== -1) {
+          if (folderIndex !== -1 && folderIndex + 1 < parts.length) {
             fullPublicId = `event-badges/${publicId}`
           }
           
@@ -363,6 +302,7 @@ export async function POST(
     if (isVerified) {
       updateData.verifiedAt = new Date()
       updateData.verifiedBy = session.user.email || "Admin"
+      // Use the uploaded Cloudinary URL or default badge
       updateData.verifiedBadgeImage = badgeImageUrl || "/badge/VerifiedBADGE (1).png"
     } else {
       updateData.verifiedAt = null
